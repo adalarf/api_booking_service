@@ -18,9 +18,6 @@ router = APIRouter(
 async def register_user(user: UserRegisterSchema, db: AsyncSession = Depends(get_async_session)):
     hashed_password = get_password_hash(user.password)
     new_user = User(
-        first_name=user.first_name,
-        last_name=user.last_name,
-        patronymic=user.patronymic,
         email=user.email,
         password=hashed_password,
     )

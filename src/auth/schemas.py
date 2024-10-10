@@ -2,9 +2,6 @@ from pydantic import BaseModel, EmailStr, field_validator
 
 
 class UserRegisterSchema(BaseModel):
-    first_name: str
-    last_name: str
-    patronymic: str
     email: EmailStr
     password: str
 
