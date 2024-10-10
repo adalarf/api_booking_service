@@ -24,7 +24,9 @@ async def register_user(user: UserRegisterSchema, db: AsyncSession = Depends(get
 
     db.add(new_user)
     await db.commit()
-    return {"msg": "User registered successfully"}
+    access_token_expires = timedelta(minutes=int(ACCESS_TOKEN_EXPIRE_MINUTES))
+    access_token = create_access_token(data={"sub": user.email}, expires_delta=access_token_expires)
+    return {"msg": "User registered successfully", "access_token": access_token, "token_type": "bearer"}
 
 
 @router.post("/login/")
