@@ -11,6 +11,13 @@ class User(Base):
     last_name = Column(String, nullable=True)
     patronymic = Column(String, nullable=True)
     email = Column(String, nullable=False, unique=True)
+    age = Column(Integer, nullable=True)
+    city = Column(String, nullable=True)
+    phone_number = Column(String, nullable=True)
+    company_name = Column(String, nullable=True)
+    vk = Column(String, nullable=True)
+    telegram = Column(String, nullable=True)
+    whatsapp = Column(String, nullable=True)
     password = Column(String, nullable=False)
 
 

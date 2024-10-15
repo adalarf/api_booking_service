@@ -6,6 +6,7 @@ from auth.models import RevokedToken
 from sqlalchemy import delete, select, insert
 from sqlalchemy.exc import NoResultFound
 from fastapi.security import OAuth2PasswordBearer
+from fastapi import HTTPException
 from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 
 
@@ -51,4 +52,17 @@ async def clean_revoked_tokens(db: AsyncSession):
     stmt = delete(RevokedToken).where(RevokedToken.revoked_at < threshold)
     await db.execute(stmt)
     await db.commit()
-    
+
+
+async def get_email_from_token(token: str, db: AsyncSession) -> str:
+    if await is_token_revoked(db, token):
+        raise HTTPException(status_code=401, detail="Could not validate credentials")
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise HTTPException(status_code=401, detail="Could not validate credentials")
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Could not validate credentials")
+    return email
