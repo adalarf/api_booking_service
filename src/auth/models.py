@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
 
@@ -19,6 +20,9 @@ class User(Base):
     telegram = Column(String, nullable=True)
     whatsapp = Column(String, nullable=True)
     password = Column(String, nullable=False)
+
+    event_id = Column(Integer, ForeignKey("event.id"), unique=True)
+    created_event = relationship("Event", back_populates="creator")
 
 
 class RevokedToken(Base):

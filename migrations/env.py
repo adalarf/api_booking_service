@@ -13,6 +13,7 @@ sys.path.append(os.path.join(sys.path[0], 'src'))
 
 
 from auth.models import *
+from events.models import *
 from config import DATABASE_URL_ASYNC_ALEMBIC
 from database import Base
 
