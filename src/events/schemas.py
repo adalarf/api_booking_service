@@ -1,4 +1,4 @@
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, model_validator, field_validator
 from typing import List
 from datetime import date, time
 from .models import ThemeEnum, StatusEnum, FormatEnum
@@ -36,6 +36,15 @@ class EventCreateSchema(BaseModel):
     format: FormatEnum
     custom_fields: List[CustomFieldSchema]
     event_dates: List[EventDateSchema]
+
+    @field_validator("event_dates")
+    def check_unique_event_dates(cls, event_dates: List[EventDateSchema]):
+        unique_dates = set()
+        for event_date in event_dates:
+            if event_date.event_date in unique_dates:
+                raise ValueError(f"Duplicate event date: {event_date.event_date}")
+            unique_dates.add(event_date.event_date)
+        return event_dates
 
     @model_validator(mode='before')
     @classmethod
