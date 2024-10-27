@@ -1,8 +1,14 @@
-from fastapi import UploadFile, File, Body
+from fastapi import UploadFile, Body
 from events.models import Event, EventFile, CustomField, EventDate, EventTime
 from events.schemas import EventCreateSchema
+from cryptography.fernet import Fernet
 from typing import List, Optional
+from config import REGISTATION_LINK_CIPHER_KEY
 import shutil
+import secrets
+
+
+cipher = Fernet(REGISTATION_LINK_CIPHER_KEY.encode())
 
 
 def upload_photo(photo: Optional[UploadFile] = None):
@@ -57,4 +63,16 @@ def add_dates_and_times_to_event(new_event: Event, event: EventCreateSchema = Bo
 
         new_event.event_dates.append(new_event_date)
 
-    
+
+def create_registration_link(event_id: int):
+    secret = secrets.token_urlsafe()
+    registration_link = f"/api/event/{event_id}/{secret}/register"
+    return registration_link
+
+
+def encrypt_registration_link(link: str):
+    return cipher.encrypt(link.encode()).decode()
+
+
+def decrypt_registration_link(encrypted_link: str) -> str:
+    return cipher.decrypt(encrypted_link.encode()).decode()

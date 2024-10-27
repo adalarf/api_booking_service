@@ -42,6 +42,7 @@ class Event(Base):
     status = Column(Enum(StatusEnum), nullable=False)
     format = Column(Enum(FormatEnum), nullable=False)
     photo = Column(String, nullable=True)
+    registration_link = Column(String, nullable=True)
 
     custom_fields = relationship("CustomField", back_populates="event_custom_field")
     event_dates = relationship("EventDate", back_populates="event_initiator")

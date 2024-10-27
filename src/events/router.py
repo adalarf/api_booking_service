@@ -1,23 +1,19 @@
-from fastapi import APIRouter, Depends, UploadFile, File, Request, HTTPException, status, Body
-from fastapi.encoders import jsonable_encoder
+from fastapi import APIRouter, Depends, UploadFile, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
-from auth.models import User
-from events.schemas import EventCreateSchema, EventCreateResponseSchema, EventFileSchema
-from events.models import Event, CustomField, EventDate, EventTime, EventFile
-from events.utils import upload_photo, upload_files_for_event, add_custom_fields_to_event, add_dates_and_times_to_event
+from events.schemas import EventCreateSchema, EventCreateResponseSchema
+from events.models import Event
+from events.utils import upload_photo, upload_files_for_event, add_custom_fields_to_event, add_dates_and_times_to_event, create_registration_link, encrypt_registration_link
 from auth.utils import oauth_scheme
 from user_profile.utils import get_user_profile_by_email
-from pydantic import ValidationError
 from database import get_async_session
-from typing import List, Optional, Annotated
-import shutil
+from typing import List, Optional
 
 
 router = APIRouter(
     prefix="/api/event"
 )
 
-@router.post("/create_event", response_model=EventCreateResponseSchema)
+@router.post("/create/", response_model=EventCreateResponseSchema)
 async def create_event(
     event: EventCreateSchema = Body(...),
     token: str = Depends(oauth_scheme),
@@ -30,6 +26,7 @@ async def create_event(
     if photo:
         photo_path = upload_photo(photo)
 
+    
     new_event = Event(
         name=event.name,
         theme=event.theme,
@@ -43,6 +40,9 @@ async def create_event(
         creator=user
     )
 
+    registration_link = create_registration_link(new_event.id)
+    new_event.registration_link = encrypt_registration_link(registration_link)
+
     add_custom_fields_to_event(new_event, event)
 
     add_dates_and_times_to_event(new_event, event)
@@ -51,8 +51,6 @@ async def create_event(
     await db.commit()
     await db.refresh(new_event)
 
-    registration_link = f"/api/event/{new_event.id}/register"
-
     return {
         "msg": "Event created",
         "event_id": new_event.id,
@@ -60,7 +58,7 @@ async def create_event(
     }
 
 
-@router.post("/upload_event_files/{event_id}", response_model=EventCreateResponseSchema)
+@router.post("/upload_event_files/{event_id}/", response_model=EventCreateResponseSchema)
 async def upload_event_files(
     event_id: int,
     files: List[UploadFile],
@@ -71,9 +69,7 @@ async def upload_event_files(
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
 
-
     event_files = upload_files_for_event(files, files_descriptions)
-
     for file in event_files:
         file.event_id = event.id
         db.add(file)
