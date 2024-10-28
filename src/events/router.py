@@ -94,12 +94,6 @@ async def invite_users(users_invited_to_event: EventInviteSchema, token: str = D
     event_id = users_invited_to_event.event_id
     stmt = select(Event).where(Event.id == event_id)
 
-    # event = await db.execute(stmt)
-    # existing_event = event.scalar_one_or_none()
-    # res = await db.scalars(
-    #     select(Event).options(selectinload(Event.creator))
-    # )
-    # creator = res.first()
     stmt = select(Event).where(Event.id == event_id).options(selectinload(Event.creator))
     event_result = await db.execute(stmt)
     existing_event = event_result.scalar_one_or_none()
