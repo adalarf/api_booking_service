@@ -58,3 +58,11 @@ class EventCreateResponseSchema(BaseModel):
     msg: str
     event_id: int
     registration_link: str
+
+
+class EmailSchema(BaseModel):
+    email: str
+
+class EventInviteSchema(BaseModel):
+    event_id: int
+    users_emails: List[EmailSchema]
