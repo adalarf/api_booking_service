@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 from typing import Optional
+from datetime import date
 import re
 
 
@@ -10,7 +11,7 @@ class UserProfileSchema(BaseModel):
     last_name: Optional[str] = None
     patronymic: Optional[str] = None
     email: Optional[str] = None
-    age: Optional[int] = None
+    birth_date: Optional[date] = None
     city: Optional[str] = None
     phone_number: Optional[str] = None
     company_name: Optional[str] = None
@@ -24,7 +25,7 @@ class UserProfileUpdateSchema(BaseModel):
     last_name: str = None
     patronymic: str = None
     email: EmailStr
-    age: int = None
+    birth_date: date = None
     city: str = None
     phone_number: str = None
     company_name: str = None

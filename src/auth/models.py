@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Date
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -12,7 +12,7 @@ class User(Base):
     last_name = Column(String, nullable=True)
     patronymic = Column(String, nullable=True)
     email = Column(String, nullable=False, unique=True)
-    age = Column(Integer, nullable=True)
+    birth_date = Column(Date, nullable=True)
     city = Column(String, nullable=True)
     phone_number = Column(String, nullable=True)
     company_name = Column(String, nullable=True)
