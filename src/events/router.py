@@ -31,7 +31,6 @@ async def create_event(
     
     new_event = Event(
         name=event.name,
-        theme=event.theme,
         description=event.description,
         visit_cost=event.visit_cost,
         city=event.city,

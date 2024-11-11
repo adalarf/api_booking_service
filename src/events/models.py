@@ -4,11 +4,6 @@ from database import Base
 import enum
 
 
-class ThemeEnum(enum.Enum):
-    learning = "learning"
-    management = "management"
-
-
 class StatusEnum(enum.Enum):
     open = "open"
     close = "close"
@@ -34,7 +29,6 @@ class Event(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
-    theme = Column(Enum(ThemeEnum), nullable=False)
     description = Column(String, nullable=False)
     visit_cost = Column(Float, nullable=False)
     city = Column(String, nullable=True)

@@ -1,7 +1,7 @@
 from pydantic import BaseModel, model_validator, field_validator
 from typing import List
 from datetime import date, time
-from .models import ThemeEnum, StatusEnum, FormatEnum
+from .models import StatusEnum, FormatEnum
 import json
 
 
@@ -27,7 +27,6 @@ class EventFileSchema(BaseModel):
 
 class EventCreateSchema(BaseModel):
     name: str
-    theme: ThemeEnum
     description: str
     visit_cost: float
     city: str | None = None
