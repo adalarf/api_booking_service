@@ -100,9 +100,7 @@ class Booking(Base):
     __tablename__ = "booking"
 
     id = Column(Integer, primary_key=True)
-    # user_id = Column(Integer, ForeignKey("user.id"), unique=True)
     user_id = Column(Integer, ForeignKey("user.id"))
-    # booking_id = Column(Integer, ForeignKey("booking.id"))
     event_time_id = Column(Integer, ForeignKey("event_time.id"))
 
     booking_values = relationship("CustomValue", back_populates="booking_custom_values")

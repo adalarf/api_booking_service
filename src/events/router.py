@@ -117,8 +117,7 @@ async def invite_users(users_invited_to_event: EventInviteSchema, token: str = D
 
 
 @router.get("/view/")
-async def view_all_events(token: str = Depends(oauth_scheme),
-                          db: AsyncSession = Depends(get_async_session)):
+async def view_all_events(db: AsyncSession = Depends(get_async_session)):
     stmt = select(Event).options(selectinload(Event.event_dates))
     result = await db.execute(stmt)
     events = result.scalars().all()
@@ -130,7 +129,6 @@ async def view_all_events(token: str = Depends(oauth_scheme),
 
 @router.get("/view/{format}/")
 async def view_all_events(format: str,
-                          token: str = Depends(oauth_scheme),
                           db: AsyncSession = Depends(get_async_session)):
     stmt = select(Event).where(Event.format == format).options(selectinload(Event.event_dates))
     result = await db.execute(stmt)
@@ -143,7 +141,6 @@ async def view_all_events(format: str,
 
 @router.get("/{event_id}/view/")
 async def view_all_events(event_id: int,
-                          token: str = Depends(oauth_scheme),
                           db: AsyncSession = Depends(get_async_session)):
     stmt = select(Event).where(Event.id == event_id).options(selectinload(Event.event_dates))
     result = await db.execute(stmt)
