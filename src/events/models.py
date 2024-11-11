@@ -71,6 +71,7 @@ class EventTime(Base):
 
     date_id = Column(Integer, ForeignKey("event_date.id"))
     event_date_times = relationship("EventDate", back_populates="event_times")
+    booking_time = relationship("Booking", back_populates="booking_date_time")
 
 
 class CustomField(Base):
@@ -81,6 +82,7 @@ class CustomField(Base):
     
     event_id = Column(Integer, ForeignKey("event.id"))
     event_custom_field = relationship("Event", back_populates="custom_fields")
+    custom_values = relationship("CustomValue", back_populates="custom_fields_for_values", uselist=False)
 
 
 class EventFile(Base):
@@ -92,3 +94,30 @@ class EventFile(Base):
 
     event_id = Column(Integer, ForeignKey("event.id"))
     event_files = relationship("Event", back_populates="files")
+
+
+class Booking(Base):
+    __tablename__ = "booking"
+
+    id = Column(Integer, primary_key=True)
+    # user_id = Column(Integer, ForeignKey("user.id"), unique=True)
+    user_id = Column(Integer, ForeignKey("user.id"))
+    # booking_id = Column(Integer, ForeignKey("booking.id"))
+    event_time_id = Column(Integer, ForeignKey("event_time.id"))
+
+    booking_values = relationship("CustomValue", back_populates="booking_custom_values")
+    user_bookings = relationship("User", back_populates="bookings")
+    booking_date_time = relationship("EventTime", back_populates="booking_time")
+
+
+class CustomValue(Base):
+    __tablename__ = "custom_value"
+
+    id = Column(Integer, primary_key=True)
+    value = Column(String, nullable=False)
+
+    custom_field_id = Column(Integer, ForeignKey("custom_field.id"), unique=True)
+    booking_id = Column(Integer, ForeignKey("booking.id"))
+
+    custom_fields_for_values = relationship("CustomField", back_populates="custom_values")
+    booking_custom_values = relationship("Booking", back_populates="booking_values")

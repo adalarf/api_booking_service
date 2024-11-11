@@ -24,6 +24,8 @@ class User(Base):
     event_id = Column(Integer, ForeignKey("event.id"), unique=True)
     created_event = relationship("Event", back_populates="creator")
 
+    bookings = relationship("Booking", back_populates="user_bookings", uselist=False)
+
 
 class RevokedToken(Base):
     __tablename__ = "revoked_token"
