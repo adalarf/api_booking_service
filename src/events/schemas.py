@@ -1,5 +1,5 @@
-from pydantic import BaseModel, model_validator, field_validator
-from typing import List
+from pydantic import BaseModel, model_validator, field_validator, AnyHttpUrl
+from typing import List, Optional
 from datetime import date, time
 from .models import StatusEnum, FormatEnum
 import json
@@ -79,3 +79,21 @@ class EventDateRegistrationSchema(BaseModel):
 class EventRegistrationSchema(BaseModel):
     custom_fields: List[CustomFieldSchema]
     event_date_time: EventDateRegistrationSchema
+
+
+class EventStartAndEndTimeSchema(BaseModel):
+    start_time: time
+    end_time: time
+
+
+class EventInfoSchema(BaseModel):
+    id: int
+    name: str
+    start_date: Optional[date]
+    end_date: Optional[date]
+    start_date_times: Optional[List[EventStartAndEndTimeSchema]]
+    end_date_times: Optional[List[EventStartAndEndTimeSchema]]
+    city: str
+    visit_cost: float
+    format: FormatEnum
+    photo_url: Optional[AnyHttpUrl]

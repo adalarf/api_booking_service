@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, UploadFile, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema
+from events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema, EventInfoSchema
 from events.models import Event, EventDate
 from events.utils import upload_photo, upload_files_for_event, add_custom_fields_to_event, add_dates_and_times_to_event, create_registration_link, send_email, register_for_event, get_events, get_event_info
 from auth.utils import oauth_scheme
@@ -9,6 +9,7 @@ from user_profile.utils import get_user_profile_by_email
 from database import get_async_session
 from typing import List, Optional
 from sqlalchemy.orm import selectinload
+from s3 import S3Client, get_s3_client
 
 
 router = APIRouter(
@@ -19,14 +20,15 @@ router = APIRouter(
 async def create_event(
     event: EventCreateSchema = Body(...),
     token: str = Depends(oauth_scheme),
+    s3_client: S3Client = Depends(get_s3_client),
     db: AsyncSession = Depends(get_async_session),
-    photo: Optional[UploadFile] = UploadFile(None)
+    photo: Optional[UploadFile] = None
 ):
     user = await get_user_profile_by_email(token, db)
 
     photo_path = None
     if photo:
-        photo_path = upload_photo(photo)
+        photo_path = await upload_photo(photo, photo.filename, s3_client)
 
     
     new_event = Event(
@@ -115,36 +117,37 @@ async def invite_users(users_invited_to_event: EventInviteSchema, token: str = D
     }
 
 
-@router.get("/view/")
-async def view_all_events(db: AsyncSession = Depends(get_async_session)):
-    stmt = select(Event).options(selectinload(Event.event_dates))
+@router.get("/view/", response_model=List[EventInfoSchema])
+async def view_all_events(s3_client: S3Client = Depends(get_s3_client), db: AsyncSession = Depends(get_async_session)):
+    stmt = select(Event).options(selectinload(Event.event_dates).selectinload(EventDate.event_times))
     result = await db.execute(stmt)
     events = result.scalars().all()
     
-    event_list = get_events(events)
-    
+    event_list = get_events(events, s3_client)
     return event_list
 
 
-@router.get("/view/{format}/")
+@router.get("/view/{format}/", response_model=List[EventInfoSchema])
 async def view_all_events(format: str,
+                          s3_client: S3Client = Depends(get_s3_client),
                           db: AsyncSession = Depends(get_async_session)):
-    stmt = select(Event).where(Event.format == format).options(selectinload(Event.event_dates))
+    stmt = select(Event).where(Event.format == format).options(selectinload(Event.event_dates).selectinload(EventDate.event_times))
     result = await db.execute(stmt)
     events = result.scalars().all()
     
-    event_list = get_events(events)
+    event_list = get_events(events, s3_client)
     
     return event_list
 
 
-@router.get("/{event_id}/view/")
+@router.get("/{event_id}/view/", response_model=EventInfoSchema)
 async def view_all_events(event_id: int,
+                          s3_client: S3Client = Depends(get_s3_client),
                           db: AsyncSession = Depends(get_async_session)):
-    stmt = select(Event).where(Event.id == event_id).options(selectinload(Event.event_dates))
+    stmt = select(Event).where(Event.id == event_id).options(selectinload(Event.event_dates).selectinload(EventDate.event_times))
     result = await db.execute(stmt)
     event = result.scalar_one_or_none()
-    event_info = get_event_info(event)
+    event_info = get_event_info(event, s3_client)
     
     return event_info
 

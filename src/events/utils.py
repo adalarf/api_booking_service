@@ -2,11 +2,12 @@ from fastapi import UploadFile, Body, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from events.models import Event, EventFile, CustomField, EventDate, EventTime, Booking, CustomValue
-from events.schemas import EventCreateSchema, EmailSchema, EventRegistrationSchema
+from events.schemas import EventCreateSchema, EmailSchema, EventRegistrationSchema, EventInfoSchema
 from cryptography.fernet import Fernet
 from typing import List, Optional
 from email.message import EmailMessage
 from config import REGISTATION_LINK_CIPHER_KEY, EMAIL_SENDER, EMAIL_PASSWORD, EMAIL_HOST, EMAIL_PORT
+from s3 import S3Client
 import shutil
 import secrets
 import aiosmtplib
@@ -16,32 +17,20 @@ import base64
 cipher = Fernet(REGISTATION_LINK_CIPHER_KEY.encode())
 
 
-def upload_photo(photo: Optional[UploadFile] = None):
-    if photo and photo.filename:
-        photo.filename = photo.filename.lower()
-        photo_path = f"media/{photo.filename}"
-
-        with open(photo_path, 'wb+') as buffer:
-            shutil.copyfileobj(photo.file, buffer)
-
-        return photo_path
-    
-    return None
+async def upload_photo(file: UploadFile, object_name: str, s3_client: S3Client):
+    await s3_client.upload_file(file, object_name)
+    return object_name
 
 
-def upload_files_for_event(files: Optional[List[UploadFile]] = None,
+async def upload_files_for_event(files: Optional[List[UploadFile]] = None,
                        files_descriptions: Optional[List[str]] = None):
     event_files = []
     if files:
         for index, file in enumerate(files):
-            file.filename = file.filename.lower()
-            file_path = f"media/{file.filename}"
-
-            with open(file_path, "wb+") as buffer:
-                shutil.copyfileobj(file.file, buffer)
+            await upload_photo(file, file.filename)
 
             file_description = files_descriptions[index] if index < len(files_descriptions) else None
-            new_file = EventFile(file_path=file_path, description=file_description)
+            new_file = EventFile(file_path=file.filename, description=file_description)
                 
             event_files.append(new_file)
 
@@ -108,44 +97,52 @@ async def send_email(registration_link: str, event_name: str, receiver: EmailSch
     await smtp.quit()
 
 
-def get_event_info(event: Event):
+def get_event_info(event: Event, s3_client: S3Client):
     if event.event_dates:
-        start_date = min(date.event_date for date in event.event_dates)
-        end_date = max(date.event_date for date in event.event_dates)
+        start_date_obj = min(event.event_dates, key=lambda d: d.event_date)
+        end_date_obj = max(event.event_dates, key=lambda d: d.event_date)
+
+        start_date = start_date_obj.event_date
+        end_date = end_date_obj.event_date
+
+        start_times = [
+            {"start_time": time.start_time, "end_time": time.end_time}
+            for time in start_date_obj.event_times
+        ]
+        end_times = [
+            {"start_time": time.start_time, "end_time": time.end_time}
+            for time in end_date_obj.event_times
+        ]
     else:
         start_date = None
         end_date = None
+        start_times = None
+        end_times = None
     
+    photo_url = None
+    if event.photo:
+        photo_url = s3_client.config["endpoint_url"] + f"/{s3_client.bucket_name}/{event.photo}"
+
     event_info = {
-            "name": event.name,
-            "start_date": start_date,
-            "end_date": end_date,
-            "city": event.city,
-            "visit_cost": event.visit_cost,
-            "format": event.format.value,
-        }
-    
-    return event_info
-
-def get_events(events: List[Event]):
-    event_list = []
-    for event in events:
-        if event.event_dates:
-            start_date = min(date.event_date for date in event.event_dates)
-            end_date = max(date.event_date for date in event.event_dates)
-        else:
-            start_date = None
-            end_date = None
-
-        event_list.append({
             "id": event.id,
             "name": event.name,
             "start_date": start_date,
             "end_date": end_date,
+            "start_date_times": start_times,
+            "end_date_times": end_times,
             "city": event.city,
             "visit_cost": event.visit_cost,
             "format": event.format.value,
-        })
+            "photo_url": photo_url,
+        }
+    
+    return event_info
+
+def get_events(events: List[Event], s3_client: S3Client):
+    event_list = []
+    for event in events:
+        event_info = get_event_info(event, s3_client)
+        event_list.append(event_info)
 
     return event_list
 
