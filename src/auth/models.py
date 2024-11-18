@@ -21,7 +21,6 @@ class User(Base):
     whatsapp = Column(String, nullable=True)
     password = Column(String, nullable=False)
 
-    event_id = Column(Integer, ForeignKey("event.id"), unique=True)
     created_event = relationship("Event", back_populates="creator")
 
     bookings = relationship("Booking", back_populates="user_bookings", uselist=False)

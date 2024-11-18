@@ -37,10 +37,11 @@ class Event(Base):
     format = Column(Enum(FormatEnum), nullable=False)
     photo = Column(String, nullable=True)
     registration_link = Column(String, nullable=True)
+    creator_id = Column(Integer, ForeignKey("user.id"), nullable=True)
 
     custom_fields = relationship("CustomField", back_populates="event_custom_field")
     event_dates = relationship("EventDate", back_populates="event_initiator")
-    creator = relationship("User", back_populates="created_event", uselist=False)
+    creator = relationship("User", back_populates="created_event")
     files = relationship("EventFile", back_populates="event_files")
 
 

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, UploadFile, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema, EventInfoSchema
-from events.models import Event, EventDate
+from events.models import Event, EventDate, Booking, EventTime
 from events.utils import upload_photo, upload_files_for_event, add_custom_fields_to_event, add_dates_and_times_to_event, create_registration_link, send_email, register_for_event, get_events, get_event_info
 from auth.utils import oauth_scheme
 from user_profile.utils import get_user_profile_by_email
@@ -22,12 +22,12 @@ async def create_event(
     token: str = Depends(oauth_scheme),
     s3_client: S3Client = Depends(get_s3_client),
     db: AsyncSession = Depends(get_async_session),
-    photo: Optional[UploadFile] = None
+    photo: Optional[UploadFile] = UploadFile(None)
 ):
     user = await get_user_profile_by_email(token, db)
 
     photo_path = None
-    if photo:
+    if photo.filename:
         photo_path = await upload_photo(photo, photo.filename, s3_client)
 
     
@@ -40,7 +40,7 @@ async def create_event(
         status=event.status,
         format=event.format,
         photo=photo_path,
-        creator=user
+        creator_id=user.id
     )
 
     add_custom_fields_to_event(new_event, event)
@@ -125,6 +125,64 @@ async def view_all_events(s3_client: S3Client = Depends(get_s3_client), db: Asyn
     
     event_list = get_events(events, s3_client)
     return event_list
+
+
+@router.get("/view/my/", response_model=List[EventInfoSchema])
+async def view_all_my_events(s3_client: S3Client = Depends(get_s3_client),
+                          token: str = Depends(oauth_scheme),
+                          db: AsyncSession = Depends(get_async_session)):
+    user = await get_user_profile_by_email(token, db)
+    stmt = select(Event).where(Event.creator_id == user.id).options(selectinload(Event.event_dates).selectinload(EventDate.event_times))
+    result = await db.execute(stmt)
+    events = result.scalars().all()
+    
+    event_list = get_events(events, s3_client)
+    return event_list
+
+
+@router.get("/view/participate/", response_model=List[EventInfoSchema])
+async def view_participate_events(s3_client: S3Client = Depends(get_s3_client),
+                          token: str = Depends(oauth_scheme),
+                          db: AsyncSession = Depends(get_async_session)):
+    user = await get_user_profile_by_email(token, db)
+    stmt = (
+        select(Event)
+        .join(EventDate, EventDate.event_id == Event.id)
+        .join(EventTime, EventTime.date_id == EventDate.id)
+        .join(Booking, Booking.event_time_id == EventTime.id)
+        .where(Booking.user_id == user.id, Event.creator_id != user.id)
+        .options(
+            selectinload(Event.event_dates).selectinload(EventDate.event_times)
+        )
+    )
+    result = await db.execute(stmt)
+    events = result.scalars().all()
+    
+    event_list = get_events(events, s3_client)
+    return event_list
+
+
+@router.get("/view/other/", response_model=List[EventInfoSchema])
+async def view_participate_events(s3_client: S3Client = Depends(get_s3_client),
+                          token: str = Depends(oauth_scheme),
+                          db: AsyncSession = Depends(get_async_session)):
+    user = await get_user_profile_by_email(token, db)
+    stmt = (
+        select(Event)
+        .join(EventDate, EventDate.event_id != Event.id)
+        .join(EventTime, EventTime.date_id != EventDate.id)
+        .join(Booking, Booking.event_time_id != EventTime.id)
+        .where(Booking.user_id != user.id, Event.creator_id != user.id)
+        .options(
+            selectinload(Event.event_dates).selectinload(EventDate.event_times)
+        )
+    )
+    result = await db.execute(stmt)
+    events = result.scalars().all()
+    
+    event_list = get_events(events, s3_client)
+    return event_list
+
 
 
 @router.get("/view/{format}/", response_model=List[EventInfoSchema])
