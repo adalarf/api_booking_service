@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, UploadFile, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema, EventInfoSchema
+from events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema, EventInfoSchema, EventSchema
 from events.models import Event, EventDate, Booking, EventTime
-from events.utils import upload_photo, upload_files_for_event, add_custom_fields_to_event, add_dates_and_times_to_event, create_registration_link, send_email, register_for_event, get_events, get_event_info
+from events.utils import upload_photo, upload_files_for_event, add_custom_fields_to_event, add_dates_and_times_to_event, create_registration_link, send_email, register_for_event, get_events, get_event_info, get_event
 from auth.utils import oauth_scheme
 from user_profile.utils import get_user_profile_by_email
 from database import get_async_session
@@ -198,14 +198,16 @@ async def view_all_events(format: str,
     return event_list
 
 
-@router.get("/{event_id}/view/", response_model=EventInfoSchema)
+@router.get("/{event_id}/view/", response_model=EventSchema)
 async def view_all_events(event_id: int,
                           s3_client: S3Client = Depends(get_s3_client),
                           db: AsyncSession = Depends(get_async_session)):
-    stmt = select(Event).where(Event.id == event_id).options(selectinload(Event.event_dates).selectinload(EventDate.event_times))
+    stmt = select(Event).where(Event.id == event_id).options(selectinload(Event.event_dates).selectinload(EventDate.event_times)
+                                                             .selectinload(EventTime.booking_time),
+                                                             selectinload(Event.creator))
     result = await db.execute(stmt)
     event = result.scalar_one_or_none()
-    event_info = get_event_info(event, s3_client)
+    event_info = get_event(event, s3_client)
     
     return event_info
 

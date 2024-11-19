@@ -97,7 +97,7 @@ async def send_email(registration_link: str, event_name: str, receiver: EmailSch
     await smtp.quit()
 
 
-def get_event_info(event: Event, s3_client: S3Client):
+def get_start_and_end_dates_and_times(event: Event):
     if event.event_dates:
         start_date_obj = min(event.event_dates, key=lambda d: d.event_date)
         end_date_obj = max(event.event_dates, key=lambda d: d.event_date)
@@ -118,10 +118,22 @@ def get_event_info(event: Event, s3_client: S3Client):
         end_date = None
         start_times = None
         end_times = None
-    
+
+    return start_date, end_date, start_times, end_times
+
+
+def get_event_photo_url(event: Event, s3_client: S3Client):
     photo_url = None
     if event.photo:
         photo_url = s3_client.config["endpoint_url"] + f"/{s3_client.bucket_name}/{event.photo}"
+    
+    return photo_url
+
+
+def get_event_info(event: Event, s3_client: S3Client):
+    start_date, end_date, start_times, end_times = get_start_and_end_dates_and_times(event)
+    
+    photo_url = get_event_photo_url(event, s3_client)
 
     event_info = {
             "id": event.id,
@@ -137,6 +149,75 @@ def get_event_info(event: Event, s3_client: S3Client):
         }
     
     return event_info
+
+
+def get_creator_info(event: Event, s3_client: S3Client):
+    photo_url = get_event_photo_url(event.creator, s3_client)
+
+    creator_info = {
+        "first_name":event.creator.first_name,
+        "last_name": event.creator.last_name,
+        "patronymic": event.creator.patronymic,
+        "company": event.creator.company_name,
+        "photo_url": photo_url,
+        "contacts": {
+            "phone_number": event.creator.phone_number,
+            "vk": event.creator.vk,
+            "telegram": event.creator.telegram,
+            "whatsapp": event.creator.whatsapp,
+        },
+    }
+
+    return creator_info
+
+
+def get_time_slots_descriptions(event: Event):
+    times_with_description = []
+    for date in event.event_dates:
+        for event_time in date.event_times:
+            times_with_description.append({
+                "date": date.event_date,
+                "start_time": event_time.start_time,
+                "end_time": event_time.end_time,
+                "description": event_time.description
+            })
+
+    return times_with_description
+
+
+def get_event(event: Event, s3_client: S3Client):
+    start_date, end_date, start_times, end_times = get_start_and_end_dates_and_times(event)
+    
+    photo_url = get_event_photo_url(event, s3_client)
+
+    total_bookings = sum(
+        len(event_time.booking_time) for date in event.event_dates for event_time in date.event_times
+    )
+
+    creator_info = get_creator_info(event, s3_client)
+
+    times_with_description = get_time_slots_descriptions(event)
+
+    event_info = {
+            "id": event.id,
+            "name": event.name,
+            "description": event.description,
+            "start_date": start_date,
+            "end_date": end_date,
+            "start_date_times": start_times,
+            "end_date_times": end_times,
+            "city": event.city,
+            "address": event.address,
+            "visit_cost": event.visit_cost,
+            "format": event.format.value,
+            "photo_url": photo_url,
+            "total_bookings": total_bookings,
+            "creator": creator_info,
+            "time_slots_descriptions": times_with_description,
+        }
+
+    return event_info
+
 
 def get_events(events: List[Event], s3_client: S3Client):
     event_list = []

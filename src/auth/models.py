@@ -20,6 +20,7 @@ class User(Base):
     telegram = Column(String, nullable=True)
     whatsapp = Column(String, nullable=True)
     password = Column(String, nullable=False)
+    photo = Column(String, nullable=True)
 
     created_event = relationship("Event", back_populates="creator")
 

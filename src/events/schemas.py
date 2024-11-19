@@ -97,3 +97,44 @@ class EventInfoSchema(BaseModel):
     visit_cost: float
     format: FormatEnum
     photo_url: Optional[AnyHttpUrl]
+
+
+class ContactsSchema(BaseModel):
+    phone_number: str
+    vk: str
+    telegram: str
+    whatsapp: str
+
+
+class CreatorSchema(BaseModel):
+    first_name: str
+    last_name: str
+    patronymic: str
+    company: str
+    photo_url: Optional[AnyHttpUrl]
+    contacts: ContactsSchema
+
+
+class TimeSlotsDescriptionSchema(BaseModel):
+    date: date
+    start_time: time
+    end_time: time
+    description: Optional[str]
+
+
+class EventSchema(BaseModel):
+    id: int
+    name: str
+    description: str
+    start_date: Optional[date]
+    end_date: Optional[date]
+    start_date_times: Optional[List[EventStartAndEndTimeSchema]]
+    end_date_times: Optional[List[EventStartAndEndTimeSchema]]
+    city: str
+    address: str
+    visit_cost: float
+    format: FormatEnum
+    photo_url: Optional[AnyHttpUrl]
+    total_bookings: int
+    creator: CreatorSchema
+    time_slots_descriptions: Optional[List[TimeSlotsDescriptionSchema]]
