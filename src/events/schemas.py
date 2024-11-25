@@ -9,6 +9,7 @@ class EventTimeSchema(BaseModel):
     start_time: time
     end_time: time
     seats_number: int
+    description: str
 
 
 class EventDateSchema(BaseModel):

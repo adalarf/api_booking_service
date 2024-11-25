@@ -51,7 +51,8 @@ def add_dates_and_times_to_event(new_event: Event, event: EventCreateSchema = Bo
             new_event_time = EventTime(
                 start_time=event_time.start_time,
                 end_time=event_time.end_time,
-                seats_number=event_time.seats_number
+                seats_number=event_time.seats_number,
+                description=event_time.description
             )
             new_event_date.event_times.append(new_event_time)
 
