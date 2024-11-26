@@ -1,8 +1,9 @@
 from fastapi import UploadFile, Body, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from auth.models import User
 from events.models import Event, EventFile, CustomField, EventDate, EventTime, Booking, CustomValue
-from events.schemas import EventCreateSchema, EmailSchema, EventRegistrationSchema, EventInfoSchema
+from events.schemas import EventCreateSchema, EmailSchema, EventRegistrationSchema, FilterSchema
 from cryptography.fernet import Fernet
 from typing import List, Optional
 from email.message import EmailMessage
@@ -279,3 +280,31 @@ async def register_for_event(
     await db.commit()
 
     return {"message": "Successfully registered for the event"}
+
+
+def collect_filters(filters: Optional[FilterSchema]):
+    if not filters:
+        return []
+
+    filters_dict = {
+        "city": Event.city,
+        "event_name": Event.name,
+        "organizer_first_name": User.first_name,
+        "organizer_last_name": User.last_name,
+        "organizer_patronymic": User.patronymic,
+        "organizer_company": User.company_name,
+        "format": Event.format,
+    }
+
+    conditions = [
+        field.ilike(f"%{getattr(filters, attr)}%")
+        for attr, field in filters_dict.items()
+        if getattr(filters, attr)
+    ]
+
+    if filters.date_start is not None:
+        conditions.append(EventDate.event_date >= filters.date_start)
+    if filters.date_end is not None:
+        conditions.append(EventDate.event_date <= filters.date_end)
+
+    return conditions

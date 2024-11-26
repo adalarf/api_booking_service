@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, UploadFile, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, distinct
-from events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema, EventInfoSchema, EventSchema
+from sqlalchemy import select, distinct, and_
+from events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema, EventInfoSchema, EventSchema, FilterSchema
 from events.models import Event, EventDate, Booking, EventTime
-from events.utils import upload_photo, upload_files_for_event, add_custom_fields_to_event, add_dates_and_times_to_event, create_registration_link, send_email, register_for_event, get_events, get_event_info, get_event
+from events.utils import upload_photo, upload_files_for_event, add_custom_fields_to_event, add_dates_and_times_to_event, create_registration_link, send_email, register_for_event, get_events, get_event_info, get_event, collect_filters
 from auth.utils import oauth_scheme
 from user_profile.utils import get_user_profile_by_email
 from database import get_async_session
@@ -318,3 +318,27 @@ async def get_cities(db: AsyncSession = Depends(get_async_session)):
     cities = result.scalars().all()
 
     return {"cities": cities}
+
+
+@router.post("/filter/", response_model=List[EventInfoSchema])
+async def filter_events(
+    filters: Optional[FilterSchema] = Body(default=None),
+    s3_client: S3Client = Depends(get_s3_client),
+    db: AsyncSession = Depends(get_async_session)
+):
+    stmt = select(Event).options(
+        selectinload(Event.event_dates).selectinload(EventDate.event_times),
+        selectinload(Event.creator)
+    )
+    
+    conditions = collect_filters(filters)
+
+    if conditions:
+        stmt = stmt.where(and_(*conditions))
+
+    result = await db.execute(stmt)
+    events = result.scalars().all()
+
+    event_list = get_events(events, s3_client)
+    
+    return event_list
