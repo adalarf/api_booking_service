@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, UploadFile, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, distinct
 from events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema, EventInfoSchema, EventSchema
 from events.models import Event, EventDate, Booking, EventTime
 from events.utils import upload_photo, upload_files_for_event, add_custom_fields_to_event, add_dates_and_times_to_event, create_registration_link, send_email, register_for_event, get_events, get_event_info, get_event
@@ -309,3 +309,12 @@ async def register_for_event_by_id(
         )
     
     return await register_for_event(event, registration_fields, user.id, db)
+
+
+@router.get("/cities/")
+async def get_cities(db: AsyncSession = Depends(get_async_session)):
+    stmt = select(distinct(Event.city)).where(Event.city != None)
+    result = await db.execute(stmt)
+    cities = result.scalars().all()
+
+    return {"cities": cities}
