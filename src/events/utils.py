@@ -1,6 +1,6 @@
 from fastapi import UploadFile, Body, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from auth.models import User
 from events.models import Event, EventFile, CustomField, EventDate, EventTime, Booking, CustomValue
 from events.schemas import EventCreateSchema, EmailSchema, EventRegistrationSchema, FilterSchema
@@ -286,25 +286,29 @@ def collect_filters(filters: Optional[FilterSchema]):
     if not filters:
         return []
 
-    filters_dict = {
-        "city": Event.city,
-        "event_name": Event.name,
-        "organizer_first_name": User.first_name,
-        "organizer_last_name": User.last_name,
-        "organizer_patronymic": User.patronymic,
-        "organizer_company": User.company_name,
-        "format": Event.format,
-    }
+    conditions = []
 
-    conditions = [
-        field.ilike(f"%{getattr(filters, attr)}%")
-        for attr, field in filters_dict.items()
-        if getattr(filters, attr)
-    ]
+    if filters.city:
+        conditions.append(Event.city.ilike(f"%{filters.city}%"))
+
+    if filters.search:
+        search = f"%{filters.search}%"
+        conditions.append(
+            or_(
+                Event.name.ilike(search),
+                User.first_name.ilike(search),
+                User.last_name.ilike(search),
+                User.patronymic.ilike(search),
+                User.company_name.ilike(search)
+            )
+        )
 
     if filters.date_start is not None:
         conditions.append(EventDate.event_date >= filters.date_start)
     if filters.date_end is not None:
         conditions.append(EventDate.event_date <= filters.date_end)
+
+    if filters.format:
+        conditions.append(Event.format == filters.format)
 
     return conditions

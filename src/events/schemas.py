@@ -143,11 +143,7 @@ class EventSchema(BaseModel):
 
 class FilterSchema(BaseModel):
     city: Optional[str] = None
-    event_name: Optional[str] = None
-    organizer_first_name: Optional[str] = None
-    organizer_last_name: Optional[str] = None
-    organizer_patronymic: Optional[str] = None
-    organizer_company: Optional[str] = None
+    search: Optional[str] = None
     date_start: Optional[date] = None
     date_end: Optional[date] = None
     format: Optional[FormatEnum] = None
