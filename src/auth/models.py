@@ -24,6 +24,8 @@ class User(Base):
 
     created_event = relationship("Event", back_populates="creator")    
     bookings = relationship("Booking", back_populates="user_bookings", uselist=False)
+    created_teams = relationship("Team", back_populates="creator")
+    user_teams = relationship("UserTeam", back_populates="user")
 
 
 class RevokedToken(Base):

@@ -5,6 +5,7 @@ from auth.utils import clean_revoked_tokens
 from auth.router import router as auth_router
 from user_profile.router import router as profile_router
 from events.router import router as events_router
+from teams.router import router as teams_router
 from database import async_session_maker
 from fastapi.openapi.utils import get_openapi
 
@@ -14,6 +15,7 @@ app = FastAPI()
 app.include_router(auth_router)
 app.include_router(profile_router)
 app.include_router(events_router)
+app.include_router(teams_router)
 
 
 def custom_openapi():
