@@ -22,8 +22,7 @@ class User(Base):
     password = Column(String, nullable=False)
     photo = Column(String, nullable=True)
 
-    created_event = relationship("Event", back_populates="creator")
-
+    created_event = relationship("Event", back_populates="creator")    
     bookings = relationship("Booking", back_populates="user_bookings", uselist=False)
 
 

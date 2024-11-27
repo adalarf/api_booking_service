@@ -173,6 +173,8 @@ async def view_participate_events(s3_client: S3Client = Depends(get_s3_client),
         .join(EventTime, EventTime.date_id != EventDate.id)
         .join(Booking, Booking.event_time_id != EventTime.id)
         .where(Booking.user_id != user.id, Event.creator_id != user.id)
+        .distinct()
+        .order_by(Event.id)
         .options(
             selectinload(Event.event_dates).selectinload(EventDate.event_times)
         )
