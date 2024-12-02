@@ -108,11 +108,11 @@ def get_start_and_end_dates_and_times(event: Event):
         end_date = end_date_obj.event_date
 
         start_times = [
-            {"start_time": time.start_time, "end_time": time.end_time}
+            {"start_time": time.start_time}
             for time in start_date_obj.event_times
         ]
         end_times = [
-            {"start_time": time.start_time, "end_time": time.end_time}
+            {"end_time": time.end_time}
             for time in end_date_obj.event_times
         ]
     else:

@@ -82,8 +82,11 @@ class EventRegistrationSchema(BaseModel):
     event_date_time: EventDateRegistrationSchema
 
 
-class EventStartAndEndTimeSchema(BaseModel):
+class EventStartTimeSchema(BaseModel):
     start_time: time
+
+
+class EventEndTimeSchema(BaseModel):
     end_time: time
 
 
@@ -92,8 +95,8 @@ class EventInfoSchema(BaseModel):
     name: str
     start_date: Optional[date]
     end_date: Optional[date]
-    start_date_times: Optional[List[EventStartAndEndTimeSchema]]
-    end_date_times: Optional[List[EventStartAndEndTimeSchema]]
+    start_date_times: Optional[List[EventStartTimeSchema]]
+    end_date_times: Optional[List[EventEndTimeSchema]]
     city: str
     visit_cost: float
     format: FormatEnum
@@ -129,8 +132,8 @@ class EventSchema(BaseModel):
     description: str
     start_date: Optional[date]
     end_date: Optional[date]
-    start_date_times: Optional[List[EventStartAndEndTimeSchema]]
-    end_date_times: Optional[List[EventStartAndEndTimeSchema]]
+    start_date_times: Optional[List[EventStartTimeSchema]]
+    end_date_times: Optional[List[EventEndTimeSchema]]
     city: str
     address: str
     visit_cost: float
