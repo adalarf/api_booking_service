@@ -99,6 +99,26 @@ async def send_email(registration_link: str, event_name: str, receiver: EmailSch
     await smtp.quit()
 
 
+async def send_message_to_email(theme: str, message: str, receiver_email: str):
+    sender = EMAIL_SENDER
+    email_host = EMAIL_HOST
+    email_port = EMAIL_PORT
+    email_password = EMAIL_PASSWORD
+    email = EmailMessage()
+    email["From"] = sender
+    email["To"] = receiver_email
+    email["Subject"] = theme
+    email.set_content(message)
+
+    smtp = aiosmtplib.SMTP()
+    
+    await smtp.connect(hostname=email_host, port=email_port)
+    await smtp.login(sender, email_password)
+
+    await smtp.sendmail(sender, receiver_email, email.as_string())
+    await smtp.quit()
+
+
 def get_start_and_end_dates_and_times(event: Event):
     if event.event_dates:
         start_date_obj = min(event.event_dates, key=lambda d: d.event_date)

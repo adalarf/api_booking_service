@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, UploadFile, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, distinct, and_
-from events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema, EventInfoSchema, EventSchema, FilterSchema
+from events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema, EventInfoSchema, EventSchema, FilterSchema, MessageSchema
 from events.models import Event, EventDate, Booking, EventTime
-from events.utils import upload_photo, upload_files_for_event, add_custom_fields_to_event, add_dates_and_times_to_event, create_registration_link, send_email, register_for_event, get_events, get_event_info, get_event, collect_filters
+from events.utils import upload_photo, upload_files_for_event, add_custom_fields_to_event, add_dates_and_times_to_event, create_registration_link, send_email, register_for_event, get_events, get_event_info, get_event, collect_filters, send_message_to_email
 from auth.utils import oauth_scheme
 from user_profile.utils import get_user_profile_by_email
 from database import get_async_session
@@ -311,6 +311,40 @@ async def register_for_event_by_id(
         )
     
     return await register_for_event(event, registration_fields, user.id, db)
+
+
+@router.post("/message/{event_id}/")
+async def send_message_to_event_participants(
+    event_id: int,
+    message: MessageSchema,
+    token: str = Depends(oauth_scheme),
+    db: AsyncSession = Depends(get_async_session)):
+    user = await get_user_profile_by_email(token, db)
+
+    stmt = select(Event).where(Event.id == event_id).options(
+        selectinload(Event.event_dates).selectinload(EventDate.event_times)
+        .selectinload(EventTime.booking_time).selectinload(Booking.user_bookings)
+    )
+    result = await db.execute(stmt)
+    event = result.scalar_one_or_none()
+
+    if not event:
+        raise "Event doesn't exist"
+    
+    if event.creator_id != user.id:
+        raise "User is not a event creator"
+    
+    participants_emails = set()
+    for date in event.event_dates:
+        for time in date.event_times:
+            for booking in time.booking_time:
+                if booking.user_bookings and booking.user_bookings.email:
+                    participants_emails.add(booking.user_bookings.email)
+    
+    for email in participants_emails:
+        await send_message_to_email(message.theme, message.message, email)
+    
+    return {"msg": "Message was send"}
 
 
 @router.get("/cities/")

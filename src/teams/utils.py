@@ -23,7 +23,6 @@ async def get_team(team_id: int, db: AsyncSession = Depends(get_async_session)):
 
 
 async def send_invite_to_team_email(registration_link: str, team_name: str, receiver: InvitedUserSchema):
-    # registration_link_decrypted = decrypt_registration_link(registration_link)
     sender = EMAIL_SENDER
     email_host = EMAIL_HOST
     email_port = EMAIL_PORT

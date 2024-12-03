@@ -150,3 +150,8 @@ class FilterSchema(BaseModel):
     date_start: Optional[date] = None
     date_end: Optional[date] = None
     format: Optional[FormatEnum] = None
+
+
+class MessageSchema(BaseModel):
+    theme: str
+    message: str
