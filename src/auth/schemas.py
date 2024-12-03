@@ -19,3 +19,7 @@ class UserRegisterSchema(BaseModel):
 class UserLoginSchema(BaseModel):
     email: EmailStr
     password: str
+
+
+class ChangePasswordSchema(BaseModel):
+    password: str
