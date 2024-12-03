@@ -62,7 +62,7 @@ def add_dates_and_times_to_event(new_event: Event, event: EventCreateSchema = Bo
 
 def create_registration_link(event_id: str) -> str:
     secret = secrets.token_urlsafe()
-    registration_link = f"{event_id}/{secret}"
+    registration_link = f"{event_id}/{secret}/"
     encoded_link = base64.urlsafe_b64encode(registration_link.encode()).decode()
     return encoded_link
 

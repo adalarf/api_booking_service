@@ -1,4 +1,4 @@
-from pydantic import BaseModel, AnyHttpUrl, model_validator
+from pydantic import BaseModel, AnyHttpUrl, model_validator, EmailStr
 from typing import Optional
 import json
 
@@ -19,3 +19,7 @@ class TeamInfoSchema(BaseModel):
     description: str
     photo_url: Optional[AnyHttpUrl]
     creator_id: int
+
+
+class InvitedUserSchema(BaseModel):
+    email: EmailStr
