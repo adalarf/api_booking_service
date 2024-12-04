@@ -127,21 +127,23 @@ def get_start_and_end_dates_and_times(event: Event):
         start_date = start_date_obj.event_date
         end_date = end_date_obj.event_date
 
-        start_times = [
-            {"start_time": time.start_time}
-            for time in start_date_obj.event_times
-        ]
-        end_times = [
-            {"end_time": time.end_time}
-            for time in end_date_obj.event_times
-        ]
+        start_time = (
+            min(start_date_obj.event_times, key=lambda d: d.start_time).start_time
+            if start_date_obj.event_times
+            else None
+        )
+        end_time = (
+            max(end_date_obj.event_times, key=lambda d: d.end_time).end_time
+            if end_date_obj.event_times
+            else None
+        )
     else:
         start_date = None
         end_date = None
-        start_times = None
-        end_times = None
+        start_time = None
+        end_time = None
 
-    return start_date, end_date, start_times, end_times
+    return start_date, end_date, start_time, end_time
 
 
 def get_event_photo_url(event: Event, s3_client: S3Client):
@@ -153,7 +155,7 @@ def get_event_photo_url(event: Event, s3_client: S3Client):
 
 
 def get_event_info(event: Event, s3_client: S3Client):
-    start_date, end_date, start_times, end_times = get_start_and_end_dates_and_times(event)
+    start_date, end_date, start_time, end_time = get_start_and_end_dates_and_times(event)
     
     photo_url = get_event_photo_url(event, s3_client)
 
@@ -162,8 +164,8 @@ def get_event_info(event: Event, s3_client: S3Client):
             "name": event.name,
             "start_date": start_date,
             "end_date": end_date,
-            "start_date_times": start_times,
-            "end_date_times": end_times,
+            "start_time": start_time,
+            "end_time": end_time,
             "city": event.city,
             "visit_cost": event.visit_cost,
             "format": event.format.value,

@@ -31,6 +31,9 @@ class FormatEnum(enum.Enum):
     forum = "Форум"
     hackathon = "Хакатон"
 
+    def __str__(self):
+        return self.value
+
 
 class Event(Base):
     __tablename__ = "event"
@@ -42,7 +45,7 @@ class Event(Base):
     city = Column(String, nullable=True)
     address = Column(String, nullable=True)
     status = Column(Enum(StatusEnum), nullable=False)
-    format = Column(Enum(FormatEnum), nullable=False)
+    format = Column(Enum(FormatEnum, native_enum=False), nullable=False)
     photo = Column(String, nullable=True)
     registration_link = Column(String, nullable=True)
     creator_id = Column(Integer, ForeignKey("user.id"), nullable=True)

@@ -95,8 +95,8 @@ class EventInfoSchema(BaseModel):
     name: str
     start_date: Optional[date]
     end_date: Optional[date]
-    start_date_times: Optional[List[EventStartTimeSchema]]
-    end_date_times: Optional[List[EventEndTimeSchema]]
+    start_time: Optional[time]
+    end_time: Optional[time]
     city: str
     visit_cost: float
     format: FormatEnum
