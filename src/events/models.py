@@ -10,18 +10,26 @@ class StatusEnum(enum.Enum):
 
 
 class FormatEnum(enum.Enum):
-    lecture = "lecture"
-    seminar = "seminar"
-    workshop = "workshop"
-    master_class = "master_class"
-    competition = "competition"
-    meeting = "meeting"
-    conference = "conference"
-    panel_discussion = "panel_discussion"
-    round_table = "round_table"
-    pitch = "pitch"
-    hackathon = "hackathon"
-    online = "online"
+    accelerator = "Акселератор"
+    workshop = "Воркшоп"
+    meeting = "Встреча"
+    exhibition = "Выставка"
+    open_day = "День открытых дверей"
+    conference = "Конференция"
+    round_table = "Круглый стол"
+    lecture = "Лекция"
+    master_class = "Мастер-класс"
+    methoda = "Метода"
+    meetup = "Митап"
+    panel_discussion = "Панельная дискуссия"
+    pitch = "Питч"
+    seminar = "Семинар"
+    competition = "Соревнование"
+    gathering = "Собрание"
+    strategic_session = "Стратегическая сессия"
+    foresight = "Форсайт"
+    forum = "Форум"
+    hackathon = "Хакатон"
 
 
 class Event(Base):
