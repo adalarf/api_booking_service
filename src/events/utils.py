@@ -210,7 +210,7 @@ def get_time_slots_descriptions(event: Event):
 
 
 def get_event(event: Event, s3_client: S3Client):
-    start_date, end_date, start_times, end_times = get_start_and_end_dates_and_times(event)
+    start_date, end_date, start_time, end_time = get_start_and_end_dates_and_times(event)
     
     photo_url = get_event_photo_url(event, s3_client)
 
@@ -228,8 +228,8 @@ def get_event(event: Event, s3_client: S3Client):
             "description": event.description,
             "start_date": start_date,
             "end_date": end_date,
-            "start_date_times": start_times,
-            "end_date_times": end_times,
+            "start_time": start_time,
+            "end_time": end_time,
             "city": event.city,
             "address": event.address,
             "visit_cost": event.visit_cost,
