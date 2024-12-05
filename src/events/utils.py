@@ -199,11 +199,14 @@ def get_time_slots_descriptions(event: Event):
     times_with_description = []
     for date in event.event_dates:
         for event_time in date.event_times:
+            bookings_count = len(event_time.booking_time)
             times_with_description.append({
                 "date": date.event_date,
                 "start_time": event_time.start_time,
                 "end_time": event_time.end_time,
-                "description": event_time.description
+                "description": event_time.description,
+                "seats_number": event_time.seats_number + bookings_count,
+                "bookings_count": bookings_count
             })
 
     return times_with_description
@@ -213,13 +216,7 @@ def get_event(event: Event, s3_client: S3Client):
     start_date, end_date, start_time, end_time = get_start_and_end_dates_and_times(event)
     
     photo_url = get_event_photo_url(event, s3_client)
-
-    total_bookings = sum(
-        len(event_time.booking_time) for date in event.event_dates for event_time in date.event_times
-    )
-
     creator_info = get_creator_info(event, s3_client)
-
     times_with_description = get_time_slots_descriptions(event)
 
     event_info = {
@@ -235,7 +232,6 @@ def get_event(event: Event, s3_client: S3Client):
             "visit_cost": event.visit_cost,
             "format": event.format.value,
             "photo_url": photo_url,
-            "total_bookings": total_bookings,
             "creator": creator_info,
             "time_slots_descriptions": times_with_description,
         }

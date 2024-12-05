@@ -124,6 +124,8 @@ class TimeSlotsDescriptionSchema(BaseModel):
     start_time: time
     end_time: time
     description: Optional[str]
+    seats_number: int
+    bookings_count: int
 
 
 class EventSchema(BaseModel):
@@ -139,7 +141,6 @@ class EventSchema(BaseModel):
     visit_cost: float
     format: FormatEnum
     photo_url: Optional[AnyHttpUrl]
-    total_bookings: int
     creator: CreatorSchema
     time_slots_descriptions: Optional[List[TimeSlotsDescriptionSchema]]
 
