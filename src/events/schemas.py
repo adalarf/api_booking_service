@@ -8,7 +8,7 @@ import json
 class EventTimeSchema(BaseModel):
     start_time: time
     end_time: time
-    seats_number: int
+    seats_number: Optional[int] = None
     description: str
 
 
@@ -124,8 +124,8 @@ class TimeSlotsDescriptionSchema(BaseModel):
     start_time: time
     end_time: time
     description: Optional[str]
-    seats_number: int
-    bookings_count: int
+    seats_number: Optional[int]
+    bookings_count: Optional[int]
 
 
 class EventSchema(BaseModel):

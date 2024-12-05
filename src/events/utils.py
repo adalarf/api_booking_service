@@ -205,7 +205,7 @@ def get_time_slots_descriptions(event: Event):
                 "start_time": event_time.start_time,
                 "end_time": event_time.end_time,
                 "description": event_time.description,
-                "seats_number": event_time.seats_number + bookings_count,
+                "seats_number": None if event_time.seats_number is None else event_time.seats_number + bookings_count,
                 "bookings_count": bookings_count
             })
 

@@ -73,7 +73,7 @@ class EventTime(Base):
     id = Column(Integer, primary_key=True)
     start_time = Column(Time, nullable=False)
     end_time = Column(Time, nullable=False)
-    seats_number = Column(Integer, nullable=False)
+    seats_number = Column(Integer, nullable=True)
     description = Column(String, nullable=True)
 
     date_id = Column(Integer, ForeignKey("event_date.id"))
