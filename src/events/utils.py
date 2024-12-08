@@ -169,6 +169,7 @@ def get_event_info(event: Event, s3_client: S3Client):
             "city": event.city,
             "visit_cost": event.visit_cost,
             "format": event.format.value,
+            "state": event.state,
             "photo_url": photo_url,
         }
     

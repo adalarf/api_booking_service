@@ -100,6 +100,7 @@ class EventInfoSchema(BaseModel):
     city: str
     visit_cost: float
     format: FormatEnum
+    state: str
     photo_url: Optional[AnyHttpUrl]
 
 
