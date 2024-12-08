@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, UploadFile, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, distinct, and_
 from events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema, EventInfoSchema, EventSchema, FilterSchema, MessageSchema
-from events.models import Event, EventDate, Booking, EventTime
+from events.models import Event, Booking, EventDateTime
 from events.utils import upload_photo, upload_files_for_event, add_custom_fields_to_event, add_dates_and_times_to_event, create_registration_link, send_email, register_for_event, get_events, get_event_info, get_event, collect_filters, send_message_to_email
 from auth.utils import oauth_scheme
 from user_profile.utils import get_user_profile_by_email
@@ -119,7 +119,7 @@ async def invite_users(users_invited_to_event: EventInviteSchema, token: str = D
 
 @router.get("/view/", response_model=List[EventInfoSchema])
 async def view_all_events(s3_client: S3Client = Depends(get_s3_client), db: AsyncSession = Depends(get_async_session)):
-    stmt = select(Event).options(selectinload(Event.event_dates).selectinload(EventDate.event_times))
+    stmt = select(Event).options(selectinload(Event.event_dates_times))
     result = await db.execute(stmt)
     events = result.scalars().all()
     
@@ -132,7 +132,7 @@ async def view_all_my_events(s3_client: S3Client = Depends(get_s3_client),
                           token: str = Depends(oauth_scheme),
                           db: AsyncSession = Depends(get_async_session)):
     user = await get_user_profile_by_email(token, db)
-    stmt = select(Event).where(Event.creator_id == user.id).options(selectinload(Event.event_dates).selectinload(EventDate.event_times))
+    stmt = select(Event).where(Event.creator_id == user.id).options(selectinload(Event.event_dates_times))
     result = await db.execute(stmt)
     events = result.scalars().all()
     
@@ -147,12 +147,11 @@ async def view_participate_events(s3_client: S3Client = Depends(get_s3_client),
     user = await get_user_profile_by_email(token, db)
     stmt = (
         select(Event)
-        .join(EventDate, EventDate.event_id == Event.id)
-        .join(EventTime, EventTime.date_id == EventDate.id)
-        .join(Booking, Booking.event_time_id == EventTime.id)
+        .join(EventDateTime, EventDateTime.event_id == Event.id)
+        .join(Booking, Booking.event_date_time_id == EventDateTime.id)
         .where(Booking.user_id == user.id, Event.creator_id != user.id)
         .options(
-            selectinload(Event.event_dates).selectinload(EventDate.event_times)
+            selectinload(Event.event_dates_times).selectinload(EventDateTime.event_initiator)
         )
     )
     result = await db.execute(stmt)
@@ -169,14 +168,13 @@ async def view_participate_events(s3_client: S3Client = Depends(get_s3_client),
     user = await get_user_profile_by_email(token, db)
     stmt = (
         select(Event)
-        .join(EventDate, EventDate.event_id != Event.id)
-        .join(EventTime, EventTime.date_id != EventDate.id)
-        .join(Booking, Booking.event_time_id != EventTime.id)
+        .join(EventDateTime, EventDateTime.event_id != Event.id)
+        .join(Booking, Booking.event_date_time_id != EventDateTime.id)
         .where(Booking.user_id != user.id, Event.creator_id != user.id)
         .distinct()
         .order_by(Event.id)
         .options(
-            selectinload(Event.event_dates).selectinload(EventDate.event_times)
+            selectinload(Event.event_dates_times).selectinload(EventDateTime.event_initiator)
         )
     )
     result = await db.execute(stmt)
@@ -191,7 +189,7 @@ async def view_participate_events(s3_client: S3Client = Depends(get_s3_client),
 async def view_all_events(format: str,
                           s3_client: S3Client = Depends(get_s3_client),
                           db: AsyncSession = Depends(get_async_session)):
-    stmt = select(Event).where(Event.format == format).options(selectinload(Event.event_dates).selectinload(EventDate.event_times))
+    stmt = select(Event).where(Event.format == format).options(selectinload(Event.event_dates_times))
     result = await db.execute(stmt)
     events = result.scalars().all()
     
@@ -204,8 +202,7 @@ async def view_all_events(format: str,
 async def view_all_events(event_id: int,
                           s3_client: S3Client = Depends(get_s3_client),
                           db: AsyncSession = Depends(get_async_session)):
-    stmt = select(Event).where(Event.id == event_id).options(selectinload(Event.event_dates).selectinload(EventDate.event_times)
-                                                             .selectinload(EventTime.booking_time),
+    stmt = select(Event).where(Event.id == event_id).options(selectinload(Event.event_dates_times).selectinload(EventDateTime.date_time_bookings),
                                                              selectinload(Event.creator))
     result = await db.execute(stmt)
     event = result.scalar_one_or_none()
@@ -227,29 +224,23 @@ async def get_event_dates_and_times_info(registration_link: str,
     if existing_event is None:
         return {"msg": "Event not found or invalid link"}
     
-    dates_stmt = (
-        select(EventDate)
-        .where(EventDate.event_id == existing_event.id)
-        .options(selectinload(EventDate.event_times))
+    dates_times_stmt = (
+        select(EventDateTime)
+        .where(EventDateTime.event_id == existing_event.id)
     )
-    dates_result = await db.execute(dates_stmt)
-    event_dates = dates_result.scalars().all()
+    dates_times_result = await db.execute(dates_times_stmt)
+    event_dates_times = dates_times_result.scalars().all()
 
     dates_info = [
         {
-            "date_id": event_date.id,
-            "date": event_date.event_date,
-            "times": [
-                {
-                    "time_id": event_time.id,
-                    "start_time": event_time.start_time,
-                    "end_time": event_time.end_time,
-                    "seats_number": event_time.seats_number
-                }
-                for event_time in event_date.event_times
-            ]
+            "date_time_id": event_date_time.id,
+            "start_date": event_date_time.start_date,
+            "end_date": event_date_time.end_date,
+            "start_time": event_date_time.start_time,
+            "end_time": event_date_time.end_time,
+            "seats_number": event_date_time.seats_number,
         }
-        for event_date in event_dates
+        for event_date_time in event_dates_times
     ]
 
     custom_fields_info = [
@@ -273,7 +264,7 @@ async def register_for_event_by_link(
     user = await get_user_profile_by_email(token, db)
     
     stmt = select(Event).where(Event.registration_link == registration_link).options(
-        selectinload(Event.event_dates).selectinload(EventDate.event_times),
+        selectinload(Event.event_dates_times),
         selectinload(Event.custom_fields)
     )
     event_result = await db.execute(stmt)
@@ -295,7 +286,7 @@ async def register_for_event_by_id(
     user = await get_user_profile_by_email(token, db)
     
     stmt = select(Event).where(Event.id == event_id).options(
-        selectinload(Event.event_dates).selectinload(EventDate.event_times),
+        selectinload(Event.event_dates_times),
         selectinload(Event.custom_fields)
     )
     event_result = await db.execute(stmt)
@@ -322,8 +313,8 @@ async def send_message_to_event_participants(
     user = await get_user_profile_by_email(token, db)
 
     stmt = select(Event).where(Event.id == event_id).options(
-        selectinload(Event.event_dates).selectinload(EventDate.event_times)
-        .selectinload(EventTime.booking_time).selectinload(Booking.user_bookings)
+        selectinload(Event.event_dates_times).selectinload(EventDateTime.date_time_bookings)
+        .selectinload(Booking.user_bookings)
     )
     result = await db.execute(stmt)
     event = result.scalar_one_or_none()
@@ -335,11 +326,10 @@ async def send_message_to_event_participants(
         raise "User is not a event creator"
     
     participants_emails = set()
-    for date in event.event_dates:
-        for time in date.event_times:
-            for booking in time.booking_time:
-                if booking.user_bookings and booking.user_bookings.email:
-                    participants_emails.add(booking.user_bookings.email)
+    for date_time in event.event_dates_times:
+        for booking in date_time.date_time_bookings:
+            if booking.user_bookings and booking.user_bookings.email:
+                participants_emails.add(booking.user_bookings.email)
     
     for email in participants_emails:
         await send_message_to_email(message.theme, message.message, email)
@@ -363,7 +353,7 @@ async def filter_events(
     db: AsyncSession = Depends(get_async_session)
 ):
     stmt = select(Event).distinct().options(
-        selectinload(Event.event_dates).selectinload(EventDate.event_times),
+        selectinload(Event.event_dates_times),
         selectinload(Event.creator)
     )
     

@@ -5,16 +5,12 @@ from .models import StatusEnum, FormatEnum
 import json
 
 
-class EventTimeSchema(BaseModel):
+class EventDateTimeSchema(BaseModel):
+    start_date: date
+    end_date: date
     start_time: time
     end_time: time
     seats_number: Optional[int] = None
-    description: str
-
-
-class EventDateSchema(BaseModel):
-    event_date: date
-    event_times: List[EventTimeSchema]
 
 
 class CustomFieldSchema(BaseModel):
@@ -35,16 +31,7 @@ class EventCreateSchema(BaseModel):
     status: StatusEnum
     format: FormatEnum
     custom_fields: List[CustomFieldSchema]
-    event_dates: List[EventDateSchema]
-
-    @field_validator("event_dates")
-    def check_unique_event_dates(cls, event_dates: List[EventDateSchema]):
-        unique_dates = set()
-        for event_date in event_dates:
-            if event_date.event_date in unique_dates:
-                raise ValueError(f"Duplicate event date: {event_date.event_date}")
-            unique_dates.add(event_date.event_date)
-        return event_dates
+    event_dates_times: List[EventDateTimeSchema]
 
     @model_validator(mode='before')
     @classmethod
@@ -68,18 +55,9 @@ class EventInviteSchema(BaseModel):
     users_emails: List[EmailSchema]
 
 
-class EventTimeRegistrationSchema(BaseModel):
-    time_id: int
-
-
-class EventDateRegistrationSchema(BaseModel):
-    event_date_id: int
-    event_time: EventTimeRegistrationSchema
-
-
 class EventRegistrationSchema(BaseModel):
     custom_fields: List[CustomFieldSchema]
-    event_date_time: EventDateRegistrationSchema
+    event_date_time_id: int
 
 
 class EventStartTimeSchema(BaseModel):
@@ -122,10 +100,10 @@ class CreatorSchema(BaseModel):
 
 
 class TimeSlotsDescriptionSchema(BaseModel):
-    date: date
+    start_date: date
+    end_date: date
     start_time: time
     end_time: time
-    description: Optional[str]
     seats_number: Optional[int]
     bookings_count: Optional[int]
 

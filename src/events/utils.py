@@ -2,7 +2,7 @@ from fastapi import UploadFile, Body, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 from auth.models import User
-from events.models import Event, EventFile, CustomField, EventDate, EventTime, Booking, CustomValue
+from events.models import Event, EventFile, CustomField, Booking, CustomValue, EventDateTime
 from events.schemas import EventCreateSchema, EmailSchema, EventRegistrationSchema, FilterSchema
 from cryptography.fernet import Fernet
 from typing import List, Optional
@@ -45,19 +45,16 @@ def add_custom_fields_to_event(new_event: Event, event: EventCreateSchema = Body
 
 
 def add_dates_and_times_to_event(new_event: Event, event: EventCreateSchema = Body(...)):
-    for event_date in event.event_dates:
-        new_event_date = EventDate(event_date=event_date.event_date)
+    for event_date_time in event.event_dates_times:
+        new_event_date_time = EventDateTime(
+            start_date=event_date_time.start_date,
+            end_date=event_date_time.end_date,
+            start_time=event_date_time.start_time,
+            end_time=event_date_time.end_time,
+            seats_number=event_date_time.seats_number,
+        )
 
-        for event_time in event_date.event_times:
-            new_event_time = EventTime(
-                start_time=event_time.start_time,
-                end_time=event_time.end_time,
-                seats_number=event_time.seats_number,
-                description=event_time.description
-            )
-            new_event_date.event_times.append(new_event_time)
-
-        new_event.event_dates.append(new_event_date)
+        new_event.event_dates_times.append(new_event_date_time)
 
 
 def create_registration_link(event_id: str) -> str:
@@ -120,23 +117,15 @@ async def send_message_to_email(theme: str, message: str, receiver_email: str):
 
 
 def get_start_and_end_dates_and_times(event: Event):
-    if event.event_dates:
-        start_date_obj = min(event.event_dates, key=lambda d: d.event_date)
-        end_date_obj = max(event.event_dates, key=lambda d: d.event_date)
+    if event.event_dates_times:
+        start_date_obj = min(event.event_dates_times, key=lambda d: d.start_date)
+        end_date_obj = max(event.event_dates_times, key=lambda d: d.end_time)
 
-        start_date = start_date_obj.event_date
-        end_date = end_date_obj.event_date
+        start_date = start_date_obj.start_date
+        end_date = end_date_obj.end_date
+        start_time = start_date_obj.start_time
+        end_time = end_date_obj.end_time
 
-        start_time = (
-            min(start_date_obj.event_times, key=lambda d: d.start_time).start_time
-            if start_date_obj.event_times
-            else None
-        )
-        end_time = (
-            max(end_date_obj.event_times, key=lambda d: d.end_time).end_time
-            if end_date_obj.event_times
-            else None
-        )
     else:
         start_date = None
         end_date = None
@@ -199,17 +188,16 @@ def get_creator_info(event: Event, s3_client: S3Client):
 
 def get_time_slots_descriptions(event: Event):
     times_with_description = []
-    for date in event.event_dates:
-        for event_time in date.event_times:
-            bookings_count = len(event_time.booking_time)
-            times_with_description.append({
-                "date": date.event_date,
-                "start_time": event_time.start_time,
-                "end_time": event_time.end_time,
-                "description": event_time.description,
-                "seats_number": None if event_time.seats_number is None else event_time.seats_number + bookings_count,
-                "bookings_count": bookings_count
-            })
+    for date_time in event.event_dates_times:
+        bookings_count = len(date_time.date_time_bookings)
+        times_with_description.append({
+            "start_date": date_time.start_date,
+            "end_date": date_time.end_date,
+            "start_time": date_time.start_time,
+            "end_time": date_time.end_time,
+            "seats_number": None if date_time.seats_number is None else date_time.seats_number + bookings_count,
+            "bookings_count": bookings_count
+        })
 
     return times_with_description
 
@@ -258,36 +246,35 @@ async def register_for_event(
     user_id: int,
     db: AsyncSession
 ):
-    selected_date_id = registration_fields.event_date_time.event_date_id
-    selected_time_id = registration_fields.event_date_time.event_time.time_id
+    date_time_id = registration_fields.event_date_time_id
 
     existing_booking_stmt = select(Booking).where(
         Booking.user_id == user_id,
-        Booking.event_time_id == selected_time_id
+        Booking.event_date_time_id == date_time_id
     )
     existing_booking = await db.execute(existing_booking_stmt)
     if existing_booking.scalar_one_or_none() is not None:
         raise HTTPException(status_code=400, detail="You are already registered for this event at the selected time.")
     
-    selected_event_time = None
-    for event_date in event.event_dates:
-        if event_date.id == selected_date_id:
-            selected_event_time = next(
-                (time for time in event_date.event_times if time.id == selected_time_id),
-                None
-            )
+    selected_event_date_time = None
+    for event_date_time in event.event_dates_times:
+        if event_date_time.id == date_time_id:
+            selected_event_date_time = date_time_id
             break
     
-    if selected_event_time is None:
+    if selected_event_date_time is None:
         raise HTTPException(status_code=404, detail="Selected date or time not found")
     
-    if selected_event_time.seats_number <= 0:
+    event_date_time_slot_stmt = select(EventDateTime).where(EventDateTime.id == selected_event_date_time)
+    existing_event_date_time_slot = await db.execute(event_date_time_slot_stmt)
+    event_date_time_slot = existing_event_date_time_slot.scalar_one_or_none()
+    if event_date_time_slot.seats_number <= 0:
         raise HTTPException(status_code=400, detail="No seats available for the selected time")
 
-    selected_event_time.seats_number -= 1
-    db.add(selected_event_time)
+    event_date_time_slot.seats_number -= 1
+    db.add(event_date_time_slot)
     
-    booking = Booking(user_id=user_id, event_time_id=selected_time_id)
+    booking = Booking(user_id=user_id, booking_date_time=event_date_time_slot)
     db.add(booking)
     await db.flush()
     
@@ -326,9 +313,9 @@ def collect_filters(filters: Optional[FilterSchema]):
         )
 
     if filters.date_start is not None:
-        conditions.append(EventDate.event_date >= filters.date_start)
+        conditions.append(EventDateTime.start_date >= filters.date_start)
     if filters.date_end is not None:
-        conditions.append(EventDate.event_date <= filters.date_end)
+        conditions.append(EventDateTime.end_date <= filters.date_end)
 
     if filters.format:
         conditions.append(Event.format == filters.format)

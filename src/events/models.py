@@ -53,7 +53,7 @@ class Event(Base):
     creator_id = Column(Integer, ForeignKey("user.id"), nullable=True)
 
     custom_fields = relationship("CustomField", back_populates="event_custom_field")
-    event_dates = relationship("EventDate", back_populates="event_initiator")
+    event_dates_times = relationship("EventDateTime", back_populates="event_initiator")
     creator = relationship("User", back_populates="created_event")
     files = relationship("EventFile", back_populates="event_files")
 
@@ -61,23 +61,21 @@ class Event(Base):
     def state(self):
         now = datetime.now()
 
-        if not self.event_dates:
+        if not self.event_dates_times:
             return "Нет дат"
 
         earliest_time = min(
             (
-                datetime.combine(date.event_date, time.start_time)
-                for date in self.event_dates
-                for time in date.event_times
+                datetime.combine(event.start_date, event.start_time)
+                for event in self.event_dates_times
             ),
             default=None,
         )
 
         latest_time = max(
             (
-                datetime.combine(date.event_date, time.end_time)
-                for date in self.event_dates
-                for time in date.event_times
+                datetime.combine(event.end_date, event.end_time)
+                for event in self.event_dates_times
             ),
             default=None,
         )
@@ -92,29 +90,19 @@ class Event(Base):
         return "Нет дат"
 
 
-class EventDate(Base):
-    __tablename__ = "event_date"
+class EventDateTime(Base):
+    __tablename__ = "event_date_time"
 
     id = Column(Integer, primary_key=True)
-    event_date = Column(Date, nullable=False)
-
-    event_id = Column(Integer, ForeignKey("event.id"))
-    event_initiator = relationship("Event", back_populates="event_dates")
-    event_times = relationship("EventTime", back_populates="event_date_times")
-
-
-class EventTime(Base):
-    __tablename__ = "event_time"
-
-    id = Column(Integer, primary_key=True)
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
     start_time = Column(Time, nullable=False)
     end_time = Column(Time, nullable=False)
     seats_number = Column(Integer, nullable=True)
-    description = Column(String, nullable=True)
 
-    date_id = Column(Integer, ForeignKey("event_date.id"))
-    event_date_times = relationship("EventDate", back_populates="event_times")
-    booking_time = relationship("Booking", back_populates="booking_date_time")
+    event_id = Column(Integer, ForeignKey("event.id"))
+    event_initiator = relationship("Event", back_populates="event_dates_times")
+    date_time_bookings = relationship("Booking", back_populates="booking_date_time")
 
 
 class CustomField(Base):
@@ -144,11 +132,11 @@ class Booking(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("user.id"))
-    event_time_id = Column(Integer, ForeignKey("event_time.id"))
+    event_date_time_id = Column(Integer, ForeignKey("event_date_time.id"))
 
     booking_values = relationship("CustomValue", back_populates="booking_custom_values")
     user_bookings = relationship("User", back_populates="bookings")
-    booking_date_time = relationship("EventTime", back_populates="booking_time")
+    booking_date_time = relationship("EventDateTime", back_populates="date_time_bookings")
 
 
 class CustomValue(Base):
