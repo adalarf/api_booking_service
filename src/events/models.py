@@ -49,6 +49,7 @@ class Event(Base):
     status = Column(Enum(StatusEnum), nullable=False)
     format = Column(Enum(FormatEnum, native_enum=False), nullable=False)
     photo = Column(String, nullable=True)
+    schedule = Column(String, nullable=True)
     registration_link = Column(String, nullable=True)
     creator_id = Column(Integer, ForeignKey("user.id"), nullable=True)
 

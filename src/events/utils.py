@@ -143,6 +143,14 @@ def get_event_photo_url(event: Event, s3_client: S3Client):
     return photo_url
 
 
+def get_event_schedule_url(event: Event, s3_client: S3Client):
+    schedule_url = None
+    if event.schedule:
+        schedule_url = s3_client.config["endpoint_url"] + f"/{s3_client.bucket_name}/{event.schedule}"
+    
+    return schedule_url
+
+
 def get_event_info(event: Event, s3_client: S3Client):
     start_date, end_date, start_time, end_time = get_start_and_end_dates_and_times(event)
     
@@ -206,6 +214,7 @@ def get_event(event: Event, s3_client: S3Client):
     start_date, end_date, start_time, end_time = get_start_and_end_dates_and_times(event)
     
     photo_url = get_event_photo_url(event, s3_client)
+    schedule_url = get_event_schedule_url(event, s3_client)
     creator_info = get_creator_info(event, s3_client)
     times_with_description = get_time_slots_descriptions(event)
 
@@ -224,6 +233,7 @@ def get_event(event: Event, s3_client: S3Client):
             "format": event.format.value,
             "state": event.state,
             "photo_url": photo_url,
+            "schedule_url": schedule_url,
             "creator": creator_info,
             "time_slots_descriptions": times_with_description,
         }

@@ -22,13 +22,18 @@ async def create_event(
     token: str = Depends(oauth_scheme),
     s3_client: S3Client = Depends(get_s3_client),
     db: AsyncSession = Depends(get_async_session),
-    photo: Optional[UploadFile] = UploadFile(None)
+    photo: Optional[UploadFile] = UploadFile(None),
+    schedule: Optional[UploadFile] = UploadFile(None)
 ):
     user = await get_user_profile_by_email(token, db)
 
     photo_path = None
     if photo.filename:
         photo_path = await upload_photo(photo, photo.filename, s3_client)
+
+    schedule_path = None
+    if schedule.filename:
+        schedule_path = await upload_photo(schedule, schedule.filename, s3_client)
 
     
     new_event = Event(
@@ -40,6 +45,7 @@ async def create_event(
         status=event.status,
         format=event.format,
         photo=photo_path,
+        schedule=schedule_path,
         creator_id=user.id
     )
 
