@@ -1,6 +1,8 @@
 from sqlalchemy import Column, String, Integer, Enum, Float, Date, Time, ForeignKey
 from sqlalchemy.orm import relationship
+from sqlalchemy.ext.hybrid import hybrid_property
 from database import Base
+from datetime import datetime
 import enum
 
 
@@ -54,6 +56,40 @@ class Event(Base):
     event_dates = relationship("EventDate", back_populates="event_initiator")
     creator = relationship("User", back_populates="created_event")
     files = relationship("EventFile", back_populates="event_files")
+
+    @hybrid_property
+    def state(self):
+        now = datetime.now()
+
+        if not self.event_dates:
+            return "Нет дат"
+
+        earliest_time = min(
+            (
+                datetime.combine(date.event_date, time.start_time)
+                for date in self.event_dates
+                for time in date.event_times
+            ),
+            default=None,
+        )
+
+        latest_time = max(
+            (
+                datetime.combine(date.event_date, time.end_time)
+                for date in self.event_dates
+                for time in date.event_times
+            ),
+            default=None,
+        )
+
+        if earliest_time and earliest_time > now:
+            return "Открыто"
+        elif earliest_time and latest_time and earliest_time <= now <= latest_time:
+            return "Идёт"
+        elif latest_time and latest_time < now:
+            return "Завершено"
+
+        return "Нет дат"
 
 
 class EventDate(Base):

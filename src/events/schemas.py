@@ -140,6 +140,7 @@ class EventSchema(BaseModel):
     address: str
     visit_cost: float
     format: FormatEnum
+    state: str
     photo_url: Optional[AnyHttpUrl]
     creator: CreatorSchema
     time_slots_descriptions: Optional[List[TimeSlotsDescriptionSchema]]

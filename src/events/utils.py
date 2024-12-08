@@ -231,6 +231,7 @@ def get_event(event: Event, s3_client: S3Client):
             "address": event.address,
             "visit_cost": event.visit_cost,
             "format": event.format.value,
+            "state": event.state,
             "photo_url": photo_url,
             "creator": creator_info,
             "time_slots_descriptions": times_with_description,
