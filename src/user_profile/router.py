@@ -25,13 +25,10 @@ async def get_user_profile(token: str = Depends(oauth_scheme), s3_client: S3Clie
 @router.put("/me/")
 @router.patch("/me/")
 async def update_user_profile(
-    profile_data: UserProfileUpdateSchema = Body(...),
+    profile_data: UserProfileUpdateSchema,
     token: str = Depends(oauth_scheme),
-    s3_client: S3Client = Depends(get_s3_client),
-    photo: Optional[UploadFile] = UploadFile(None),
     db: AsyncSession = Depends(get_async_session)
 ):
-    print(profile_data)
     user_profile = await get_user_profile_by_email(token, db)
     
     if profile_data.email:
@@ -48,12 +45,48 @@ async def update_user_profile(
             setattr(user_profile, field, value)
         await db.commit()
 
-    photo_path = None
-    if photo.filename:
-        photo_path = await upload_photo(photo, photo.filename, s3_client)
-        user_profile.photo = photo_path
-
     await db.commit()
     await db.refresh(user_profile)
 
     return {"msg": "Profile updated"}
+
+
+@router.post("/load-photo/")
+async def load_user_photo(token: str = Depends(oauth_scheme),
+                    s3_client: S3Client = Depends(get_s3_client),
+                    photo: Optional[UploadFile] = UploadFile(None),
+                    db: AsyncSession = Depends(get_async_session)):
+    user_profile = await get_user_profile_by_email(token, db)
+
+    if user_profile.photo:
+        return {"msg": "User already has a photo"}
+
+    photo_path = None
+    if photo.filename:
+        photo_path = await upload_photo(photo, photo.filename, s3_client)
+        user_profile.photo = photo_path
+    
+    await db.commit()
+    return {"msg": "Photo is uploaded"}
+
+
+@router.put("/update-photo/")
+async def update_user_photo(
+    token: str = Depends(oauth_scheme),
+    s3_client: S3Client = Depends(get_s3_client),
+    new_photo: Optional[UploadFile] = UploadFile(None),
+    db: AsyncSession = Depends(get_async_session),
+):
+    user_profile = await get_user_profile_by_email(token, db)
+
+    if not new_photo or not new_photo.filename:
+        raise HTTPException(status_code=400, detail="Photo doesn't provided")
+
+    if user_profile.photo:
+        await s3_client.delete_file(user_profile.photo)
+
+    new_photo_path = await upload_photo(new_photo, new_photo.filename, s3_client)
+    user_profile.photo = new_photo_path
+
+    await db.commit()
+    return {"msg": "Photo updated successfully"}

@@ -1,8 +1,7 @@
-from pydantic import BaseModel, ConfigDict, EmailStr, field_validator, AnyHttpUrl, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator, AnyHttpUrl
 from typing import Optional
 from datetime import date
 import re
-import json
 
 class UserProfileSchema(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -39,11 +38,4 @@ class UserProfileUpdateSchema(BaseModel):
         phone_regex = r'^\+?\d{10,15}$'
         if value and not re.match(phone_regex, value):
             raise ValueError('Invalid phone number format. Use international format like +1234567890')
-        return value
-    
-    @model_validator(mode='before')
-    @classmethod
-    def validate_to_json(cls, value):
-        if isinstance(value, str):
-            return cls(**json.loads(value))
         return value
