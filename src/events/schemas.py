@@ -104,6 +104,7 @@ class EventInfoSchema(BaseModel):
 
 
 class ContactsSchema(BaseModel):
+    email: str
     phone_number: str
     vk: str
     telegram: str
@@ -139,6 +140,7 @@ class EventSchema(BaseModel):
     city: str
     address: str
     visit_cost: float
+    status: StatusEnum
     format: FormatEnum
     state: str
     photo_url: Optional[AnyHttpUrl]

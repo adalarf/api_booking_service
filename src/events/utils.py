@@ -185,6 +185,7 @@ def get_creator_info(event: Event, s3_client: S3Client):
         "company": event.creator.company_name,
         "photo_url": photo_url,
         "contacts": {
+            "email": event.creator.email,
             "phone_number": event.creator.phone_number,
             "vk": event.creator.vk,
             "telegram": event.creator.telegram,
@@ -230,6 +231,7 @@ def get_event(event: Event, s3_client: S3Client):
             "city": event.city,
             "address": event.address,
             "visit_cost": event.visit_cost,
+            "status": event.status,
             "format": event.format.value,
             "state": event.state,
             "photo_url": photo_url,
