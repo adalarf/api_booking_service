@@ -84,19 +84,19 @@ class EventInfoSchema(BaseModel):
 
 class ContactsSchema(BaseModel):
     email: str
-    phone_number: str
-    vk: str
-    telegram: str
-    whatsapp: str
+    phone_number: Optional[str]
+    vk: Optional[str]
+    telegram: Optional[str]
+    whatsapp: Optional[str]
 
 
 class CreatorSchema(BaseModel):
-    first_name: str
-    last_name: str
-    patronymic: str
-    company: str
+    first_name: Optional[str]
+    last_name: Optional[str]
+    patronymic: Optional[str]
+    company: Optional[str]
     photo_url: Optional[AnyHttpUrl]
-    contacts: ContactsSchema
+    contacts: Optional[ContactsSchema]
 
 
 class TimeSlotsDescriptionSchema(BaseModel):
