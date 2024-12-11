@@ -39,9 +39,10 @@ async def upload_files_for_event(files: Optional[List[UploadFile]] = None,
 
 
 def add_custom_fields_to_event(new_event: Event, event: EventCreateSchema = Body(...)):
-    for custom_field in event.custom_fields:
-        new_custom_field = CustomField(title=custom_field.title)
-        new_event.custom_fields.append(new_custom_field)
+    if event.custom_fields:
+        for custom_field in event.custom_fields:
+            new_custom_field = CustomField(title=custom_field.title)
+            new_event.custom_fields.append(new_custom_field)
 
 
 def add_dates_and_times_to_event(new_event: Event, event: EventCreateSchema = Body(...)):
@@ -289,13 +290,14 @@ async def register_for_event(
     db.add(booking)
     await db.flush()
     
-    for field_data, custom_field in zip(registration_fields.custom_fields, event.custom_fields):
-        custom_value = CustomValue(
-            value=field_data.title,
-            custom_field_id=custom_field.id,
-            booking_id=booking.id
-        )
-        db.add(custom_value)
+    if event.custom_fields:
+        for field_data, custom_field in zip(registration_fields.custom_fields, event.custom_fields):
+            custom_value = CustomValue(
+                value=field_data.title,
+                custom_field_id=custom_field.id,
+                booking_id=booking.id
+            )
+            db.add(custom_value)
     
     await db.commit()
 

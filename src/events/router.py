@@ -248,14 +248,14 @@ async def get_event_dates_and_times_info(registration_link: str,
         }
         for event_date_time in event_dates_times
     ]
-
-    custom_fields_info = [
-        {
-            "field_id": custom_field.id,
-            "title": custom_field.title
-        }
-        for custom_field in existing_event.custom_fields
-    ]
+    if existing_event.custom_fields:
+        custom_fields_info = [
+            {
+                "field_id": custom_field.id,
+                "title": custom_field.title
+            }
+            for custom_field in existing_event.custom_fields
+        ]
 
     return {"dates": dates_info, "custom_fields": custom_fields_info}
 
