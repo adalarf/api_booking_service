@@ -100,6 +100,7 @@ class CreatorSchema(BaseModel):
 
 
 class TimeSlotsDescriptionSchema(BaseModel):
+    id: int
     start_date: date
     end_date: date
     start_time: time

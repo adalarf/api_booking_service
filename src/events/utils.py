@@ -199,6 +199,7 @@ def get_time_slots_descriptions(event: Event):
     for date_time in event.event_dates_times:
         bookings_count = len(date_time.date_time_bookings)
         times_with_description.append({
+            "id": date_time.id,
             "start_date": date_time.start_date,
             "end_date": date_time.end_date,
             "start_time": date_time.start_time,
