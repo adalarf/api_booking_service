@@ -257,7 +257,9 @@ async def get_event_dates_and_times_info(registration_link: str,
             for custom_field in existing_event.custom_fields
         ]
 
-    return {"dates": dates_info, "custom_fields": custom_fields_info}
+        return {"dates": dates_info, "custom_fields": custom_fields_info}
+    
+    return {"dates": dates_info}
 
     
 @router.post("/join/{registration_link}/")
@@ -280,6 +282,52 @@ async def register_for_event_by_link(
         raise HTTPException(status_code=404, detail="Event not found or invalid link")
     
     return await register_for_event(event, registration_fields, user.id, db)
+
+
+@router.get("/register/{event_id}/")
+async def get_register_by_event_id_info(
+    event_id: int,
+    token: str = Depends(oauth_scheme),
+    db: AsyncSession = Depends(get_async_session)
+):
+    user = await get_user_profile_by_email(token, db)
+    stmt = select(Event).where(Event.id == event_id).options(
+        selectinload(Event.custom_fields)
+    )
+    event_result = await db.execute(stmt)
+    existing_event = event_result.scalar_one_or_none()
+    if existing_event is None:
+        return {"msg": "Event not found or invalid link"}
+    
+    dates_times_stmt = (
+        select(EventDateTime)
+        .where(EventDateTime.event_id == existing_event.id)
+    )
+    dates_times_result = await db.execute(dates_times_stmt)
+    event_dates_times = dates_times_result.scalars().all()
+
+    dates_info = [
+        {
+            "date_time_id": event_date_time.id,
+            "start_date": event_date_time.start_date,
+            "end_date": event_date_time.end_date,
+            "start_time": event_date_time.start_time,
+            "end_time": event_date_time.end_time,
+            "seats_number": event_date_time.seats_number,
+        }
+        for event_date_time in event_dates_times
+    ]
+    if existing_event.custom_fields:
+        custom_fields_info = [
+            {
+                "field_id": custom_field.id,
+                "title": custom_field.title
+            }
+            for custom_field in existing_event.custom_fields
+        ]
+
+        return {"dates": dates_info, "custom_fields": custom_fields_info}
+    return {"dates": dates_info}
 
 
 @router.post("/register/{event_id}/")

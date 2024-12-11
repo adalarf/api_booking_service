@@ -30,7 +30,7 @@ class EventCreateSchema(BaseModel):
     address: str | None = None
     status: StatusEnum
     format: FormatEnum
-    custom_fields: Optional[List[CustomFieldSchema]]
+    custom_fields: Optional[List[CustomFieldSchema]] = []
     event_dates_times: List[EventDateTimeSchema]
 
     @model_validator(mode='before')
@@ -56,7 +56,7 @@ class EventInviteSchema(BaseModel):
 
 
 class EventRegistrationSchema(BaseModel):
-    custom_fields: Optional[List[CustomFieldSchema]]
+    custom_fields: Optional[List[CustomFieldSchema]] = []
     event_date_time_id: int
 
 

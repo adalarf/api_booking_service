@@ -280,12 +280,13 @@ async def register_for_event(
     event_date_time_slot_stmt = select(EventDateTime).where(EventDateTime.id == selected_event_date_time)
     existing_event_date_time_slot = await db.execute(event_date_time_slot_stmt)
     event_date_time_slot = existing_event_date_time_slot.scalar_one_or_none()
-    if event_date_time_slot.seats_number <= 0:
-        raise HTTPException(status_code=400, detail="No seats available for the selected time")
+    if event_date_time_slot.seats_number:
+        if event_date_time_slot.seats_number <= 0:
+            raise HTTPException(status_code=400, detail="No seats available for the selected time")
 
-    event_date_time_slot.seats_number -= 1
+        event_date_time_slot.seats_number -= 1
+
     db.add(event_date_time_slot)
-    
     booking = Booking(user_id=user_id, booking_date_time=event_date_time_slot)
     db.add(booking)
     await db.flush()
