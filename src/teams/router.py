@@ -106,10 +106,10 @@ async def join_to_team_through_registration_link(
     user_team = result.scalar_one_or_none()
 
     if not user_team:
-        raise "Invalid or expired registration link"
+        return "Invalid or expired registration link"
     
     if user_team.user_id:
-        raise "User is already part of the team"
+        return "User is already part of the team"
     
     user_team.user_id = user.id
     user_team.registration_link = None
@@ -138,6 +138,9 @@ async def join_to_team_through_invitation(
     stmt_result = await db.execute(stmt)
     team = stmt_result.scalar_one_or_none()
 
+    if not team:
+        return "Team doesn't exist"
+    
     new_user_team = UserTeam(
         user_id = user.id,
         team_id = team.id,
