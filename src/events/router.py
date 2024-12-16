@@ -65,7 +65,8 @@ async def create_event(
     return {
         "msg": "Event created",
         "event_id": new_event.id,
-        "registration_link": registration_link
+        "registration_link": registration_link,
+        "event_link": f"http://localhost:3001/events/{new_event.id}"
     }
 
 
