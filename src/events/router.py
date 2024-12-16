@@ -406,7 +406,9 @@ async def filter_events(
     s3_client: S3Client = Depends(get_s3_client),
     db: AsyncSession = Depends(get_async_session)
 ):
-    stmt = select(Event).distinct().options(
+    stmt = select(Event).distinct().join(
+        EventDateTime, Event.id == EventDateTime.event_id, isouter=True
+        ).options(
         selectinload(Event.event_dates_times),
         selectinload(Event.creator)
     )
