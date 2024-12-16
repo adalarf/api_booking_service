@@ -5,6 +5,7 @@ from events.schemas import EventCreateSchema, EventCreateResponseSchema, EventIn
 from events.models import Event, Booking, EventDateTime
 from events.utils import upload_photo, upload_files_for_event, add_custom_fields_to_event, add_dates_and_times_to_event, create_registration_link, send_email, register_for_event, get_events, get_event_info, get_event, collect_filters, send_message_to_email
 from auth.utils import oauth_scheme
+from auth.models import User
 from user_profile.utils import get_user_profile_by_email
 from database import get_async_session
 from typing import List, Optional
@@ -408,7 +409,7 @@ async def filter_events(
 ):
     stmt = select(Event).distinct().join(
         EventDateTime, Event.id == EventDateTime.event_id, isouter=True
-        ).options(
+        ).join(User, Event.creator_id == User.id).options(
         selectinload(Event.event_dates_times),
         selectinload(Event.creator)
     )
