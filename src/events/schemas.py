@@ -158,6 +158,7 @@ class EventSchema(BaseModel):
     visit_cost: float
     status: StatusEnum
     format: FormatEnum
+    online_link: Optional[AnyHttpUrl] = None
     state: str
     photo_url: Optional[AnyHttpUrl]
     schedule_url: Optional[AnyHttpUrl]

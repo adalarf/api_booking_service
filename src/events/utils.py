@@ -293,6 +293,7 @@ def get_event(event: Event, s3_client: S3Client):
             "visit_cost": event.visit_cost,
             "status": event.status,
             "format": event.format.value,
+            "online_link": event.online_link,
             "state": event.state,
             "photo_url": photo_url,
             "schedule_url": schedule_url,
