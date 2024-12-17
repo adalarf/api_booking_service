@@ -79,7 +79,6 @@ async def cancel_event(
     db: AsyncSession = Depends(get_async_session)
 ):
     user = await get_user_profile_by_email(token, db)
-
     stmt = select(Event).where(Event.id == event_id).options(selectinload(Event.custom_fields),
                                                              selectinload(Event.event_dates_times),
                                                              selectinload(Event.files))
@@ -415,6 +414,31 @@ async def register_for_event_by_id(
     
     return await register_for_event(event, registration_fields, user.id, db)
 
+
+@router.delete("/cancel-booking/{event_id}/")
+async def cancel_booking(
+    event_id: int,
+    token: str = Depends(oauth_scheme),
+    db: AsyncSession = Depends(get_async_session)
+):
+    user = await get_user_profile_by_email(token, db)
+    stmt = select(Booking).join(EventDateTime).where(EventDateTime.event_id == event_id).options(
+        selectinload(Booking.booking_values)
+    )
+    result = await db.execute(stmt)
+    booking = result.scalar_one_or_none()
+
+    if not booking:
+        return {"msg": "Booking doesn't exist"}
+    
+    if booking.user_id != user.id:
+        return {"msg": "User isn't a member of the event"}
+    
+    await db.delete(booking)
+    await db.commit()
+
+    return {"msg": "Booking was deleted"}
+    
 
 @router.post("/message/{event_id}/")
 async def send_message_to_event_participants(
