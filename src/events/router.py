@@ -72,6 +72,35 @@ async def create_event(
     }
 
 
+@router.delete("/cancel/{event_id}/")
+async def cancel_event(
+    event_id: int,
+    token: str = Depends(oauth_scheme),
+    db: AsyncSession = Depends(get_async_session)
+):
+    user = await get_user_profile_by_email(token, db)
+
+    stmt = select(Event).where(Event.id == event_id).options(selectinload(Event.custom_fields),
+                                                             selectinload(Event.event_dates_times),
+                                                             selectinload(Event.files))
+    result = await db.execute(stmt)
+    event = result.scalar_one_or_none()
+
+    if not event:
+        return {"msg": "Event doesn't exist"}
+    
+    if event.creator_id != user.id:
+        return {"msg": "User isn't a event creator"}
+    
+    if event.state != "Открыто":
+        return {"msg": "Event doesn't open"}
+
+    await db.delete(event)
+    await db.commit()
+
+    return {"msg": "Event was deleted"}
+
+
 @router.patch("/change-online-link/{event_id}/")
 @router.put("/change-online-link/{event_id}/")
 async def change_online_link_for_event(

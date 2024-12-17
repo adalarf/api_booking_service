@@ -54,10 +54,10 @@ class Event(Base):
     online_link = Column(String, nullable=True)
     creator_id = Column(Integer, ForeignKey("user.id"), nullable=True)
 
-    custom_fields = relationship("CustomField", back_populates="event_custom_field")
-    event_dates_times = relationship("EventDateTime", back_populates="event_initiator")
+    custom_fields = relationship("CustomField", back_populates="event_custom_field", cascade="all, delete")
+    event_dates_times = relationship("EventDateTime", back_populates="event_initiator", cascade="all, delete")
     creator = relationship("User", back_populates="created_event")
-    files = relationship("EventFile", back_populates="event_files")
+    files = relationship("EventFile", back_populates="event_files", cascade="all, delete")
 
     @hybrid_property
     def state(self):
@@ -104,7 +104,7 @@ class EventDateTime(Base):
 
     event_id = Column(Integer, ForeignKey("event.id"))
     event_initiator = relationship("Event", back_populates="event_dates_times")
-    date_time_bookings = relationship("Booking", back_populates="booking_date_time")
+    date_time_bookings = relationship("Booking", back_populates="booking_date_time", cascade="all, delete")
 
 
 class CustomField(Base):
@@ -115,7 +115,7 @@ class CustomField(Base):
     
     event_id = Column(Integer, ForeignKey("event.id"))
     event_custom_field = relationship("Event", back_populates="custom_fields")
-    custom_values = relationship("CustomValue", back_populates="custom_fields_for_values", uselist=False)
+    custom_values = relationship("CustomValue", back_populates="custom_fields_for_values", uselist=False, cascade="all, delete")
 
 
 class EventFile(Base):
@@ -134,9 +134,9 @@ class Booking(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("user.id"))
-    event_date_time_id = Column(Integer, ForeignKey("event_date_time.id"))
+    event_date_time_id = Column(Integer, ForeignKey("event_date_time.id", ondelete="CASCADE"))
 
-    booking_values = relationship("CustomValue", back_populates="booking_custom_values")
+    booking_values = relationship("CustomValue", back_populates="booking_custom_values", cascade="all, delete")
     user_bookings = relationship("User", back_populates="bookings")
     booking_date_time = relationship("EventDateTime", back_populates="date_time_bookings")
 
