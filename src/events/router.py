@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, UploadFile, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, distinct, and_
-from events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema, EventInfoSchema, EventSchema, FilterSchema, MessageSchema, ChangeOnlineLinkSchema
+from sqlalchemy.orm import joinedload
+from events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema, EventInfoSchema, EventSchema, FilterSchema, MessageSchema, ChangeOnlineLinkSchema, EventUpdateSchema
 from events.models import Event, Booking, EventDateTime
-from events.utils import upload_photo, upload_files_for_event, add_custom_fields_to_event, add_dates_and_times_to_event, create_registration_link, send_email, register_for_event, get_events, get_event_info, get_event, collect_filters, send_message_to_email
+from events.utils import upload_photo, upload_files_for_event, add_custom_fields_to_event, add_dates_and_times_to_event, create_registration_link, send_email, register_for_event, get_events, get_event_info, get_event, collect_filters, send_message_to_email, update_custom_fields_for_event, update_dates_and_times_for_event, create_new_custom_fields_for_event, create_new_dates_and_times_for_event
 from auth.utils import oauth_scheme
 from auth.models import User
 from user_profile.utils import get_user_profile_by_email
@@ -69,6 +70,77 @@ async def create_event(
         "event_id": new_event.id,
         "registration_link": registration_link,
         "event_link": f"http://localhost:3001/events/{new_event.id}"
+    }
+
+
+@router.patch("/update/{event_id}/")
+@router.put("/update/{event_id}/")
+async def update_event(
+    event_id: int,
+    updated_event: EventCreateSchema = Body(...),
+    token: str = Depends(oauth_scheme),
+    s3_client: S3Client = Depends(get_s3_client),
+    db: AsyncSession = Depends(get_async_session),
+    photo: Optional[UploadFile] = UploadFile(None),
+    schedule: Optional[UploadFile] = UploadFile(None)
+):
+    user = await get_user_profile_by_email(token, db)
+
+    event = await db.get(Event, event_id, options=[joinedload(Event.event_dates_times), joinedload(Event.creator)])
+    if not event:
+        return {"msg": "Event not found"}
+    
+    if event.creator_id != user.id:
+        return {"msg": "User isn't a creator of the event"}
+    
+    if event.state != "Открыто":
+        return {"msg": "Event doesn't open"}
+    
+    if photo.filename:
+        if event.photo:
+            await s3_client.delete_file(event.photo)
+        event.photo = await upload_photo(photo, photo.filename, s3_client)
+
+    if schedule.filename:
+        if event.schedule:
+            await s3_client.delete_file(event.schedule)
+        event.schedule = await upload_photo(schedule, schedule.filename, s3_client)
+
+    event.name = updated_event.name
+    event.description = updated_event.description
+    event.visit_cost = updated_event.visit_cost
+    event.city = updated_event.city
+    event.address = updated_event.address
+    event.status = updated_event.status
+    event.format = updated_event.format
+
+    if updated_event.custom_fields:
+        await update_custom_fields_for_event(event, updated_event.custom_fields, db)
+
+    if updated_event.event_dates_times:
+        await update_dates_and_times_for_event(event, updated_event.event_dates_times, db)
+
+    if updated_event.new_custom_fields:
+        await create_new_custom_fields_for_event(event, updated_event.new_custom_fields, db)
+
+    if updated_event.new_event_dates_times:
+        await create_new_dates_and_times_for_event(event, updated_event.new_event_dates_times, db)
+
+    await db.commit()
+
+    participants = await db.execute(
+        db.query(User)
+        .join(Booking, Booking.user_id == User.id)
+        .filter(Booking.event_date_time_id.in_([dt.id for dt in event.event_dates_times]))
+    )
+    participants = participants.scalars().all()
+
+    for participant in participants:
+        await send_message_to_email("Please check the updated details.", f"Event '{event.name}' has been updated", participant.email)
+
+    return {
+        "msg": "Event updated successfully",
+        "event_id": event.id
     }
 
 

@@ -41,6 +41,40 @@ class EventCreateSchema(BaseModel):
             return cls(**json.loads(value))
         return value
 
+class UpdateEventDateTimeSchema(BaseModel):
+    id: int
+    start_date: date
+    end_date: date
+    start_time: time
+    end_time: time
+    seats_number: Optional[int] = None
+
+
+class UpdateCustomFieldSchema(BaseModel):
+    id: int
+    title: Optional[str]
+
+
+class EventUpdateSchema(BaseModel):
+    name: Optional[str]
+    description: Optional[str]
+    visit_cost: Optional[float]
+    city: Optional[str]
+    address: Optional[str]
+    status: Optional[StatusEnum]
+    format: Optional[FormatEnum]
+    custom_fields: Optional[List[CustomFieldSchema]] = []
+    event_dates_times: Optional[List[UpdateEventDateTimeSchema]]
+    new_custom_fields: Optional[List[UpdateCustomFieldSchema]] = []
+    new_event_dates_times: Optional[List[EventDateTimeSchema]]
+
+    @model_validator(mode='before')
+    @classmethod
+    def validate_to_json(cls, value):
+        if isinstance(value, str):
+            return cls(**json.loads(value))
+        return value
+
 
 class EventCreateResponseSchema(BaseModel):
     msg: str

@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 from auth.models import User
 from events.models import Event, EventFile, CustomField, Booking, CustomValue, EventDateTime
-from events.schemas import EventCreateSchema, EmailSchema, EventRegistrationSchema, FilterSchema
+from events.schemas import EventCreateSchema, EmailSchema, EventRegistrationSchema, FilterSchema, UpdateCustomFieldSchema, UpdateEventDateTimeSchema, EventDateTimeSchema
 from cryptography.fernet import Fernet
 from typing import List, Optional
 from email.message import EmailMessage
@@ -63,6 +63,66 @@ def create_registration_link(event_id: str) -> str:
     registration_link = f"{event_id}/{secret}/"
     encoded_link = base64.urlsafe_b64encode(registration_link.encode()).decode()
     return encoded_link
+
+
+async def update_custom_fields_for_event(event: Event, custom_fields: List[UpdateCustomFieldSchema], db: AsyncSession):
+    for field_data in custom_fields:
+        existing_field = await db.execute(
+            select(CustomField).filter(CustomField.id == field_data.id, CustomField.event_id == event.id)
+        )
+        existing_field = existing_field.scalar_one_or_none()
+
+        if existing_field:
+            existing_field.title = field_data.title or existing_field.title
+        else:
+            return {"msg": "Custom field doesn't exist"}
+
+    await db.flush()
+
+
+async def update_dates_and_times_for_event(event: Event, event_dates_times: List[UpdateEventDateTimeSchema], db: AsyncSession):
+    for date_time_data in event_dates_times:
+        existing_date_time = await db.execute(
+            select(EventDateTime).filter(EventDateTime.id == date_time_data.id, EventDateTime.event_id == event.id)
+        )
+        existing_date_time = existing_date_time.scalar_one_or_none()
+
+        if existing_date_time:
+            existing_date_time.start_date = date_time_data.start_date or existing_date_time.start_date
+            existing_date_time.end_date = date_time_data.end_date or existing_date_time.end_date
+            existing_date_time.start_time = date_time_data.start_time or existing_date_time.start_time
+            existing_date_time.end_time = date_time_data.end_time or existing_date_time.end_time
+            existing_date_time.seats_number = date_time_data.seats_number or existing_date_time.seats_number
+        else:
+            return {"msg": "Datetime slot doesn't exist"}
+
+    await db.flush()
+
+
+async def create_new_custom_fields_for_event(event: Event, new_custom_fields: List[UpdateCustomFieldSchema], db: AsyncSession):
+    for field_data in new_custom_fields:
+        new_field = CustomField(
+            title=field_data.title,
+            event_id=event.id
+        )
+        db.add(new_field)
+
+    await db.flush()
+
+
+async def create_new_dates_and_times_for_event(event: Event, new_event_dates_times: List[EventDateTimeSchema], db: AsyncSession):
+    for date_time_data in new_event_dates_times:
+        new_date_time = EventDateTime(
+            start_date=date_time_data.start_date,
+            end_date=date_time_data.end_date,
+            start_time=date_time_data.start_time,
+            end_time=date_time_data.end_time,
+            seats_number=date_time_data.seats_number,
+            event_id=event.id
+        )
+        db.add(new_date_time)
+
+    await db.flush()
 
 
 def encrypt_registration_link(link: str) -> str:
