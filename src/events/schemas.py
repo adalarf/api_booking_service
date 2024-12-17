@@ -30,6 +30,7 @@ class EventCreateSchema(BaseModel):
     address: str | None = None
     status: StatusEnum
     format: FormatEnum
+    online_link: Optional[AnyHttpUrl] = None
     custom_fields: Optional[List[CustomFieldSchema]] = []
     event_dates_times: List[EventDateTimeSchema]
 
@@ -141,3 +142,7 @@ class FilterSchema(BaseModel):
 class MessageSchema(BaseModel):
     theme: str
     message: str
+
+
+class ChangeOnlineLinkSchema(BaseModel):
+    online_link: AnyHttpUrl

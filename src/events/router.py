@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, UploadFile, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, distinct, and_
-from events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema, EventInfoSchema, EventSchema, FilterSchema, MessageSchema
+from events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema, EventInfoSchema, EventSchema, FilterSchema, MessageSchema, ChangeOnlineLinkSchema
 from events.models import Event, Booking, EventDateTime
 from events.utils import upload_photo, upload_files_for_event, add_custom_fields_to_event, add_dates_and_times_to_event, create_registration_link, send_email, register_for_event, get_events, get_event_info, get_event, collect_filters, send_message_to_email
 from auth.utils import oauth_scheme
@@ -36,7 +36,8 @@ async def create_event(
     if schedule.filename:
         schedule_path = await upload_photo(schedule, schedule.filename, s3_client)
 
-    
+    online_link = str(event.online_link) if event.online_link else None
+
     new_event = Event(
         name=event.name,
         description=event.description,
@@ -45,6 +46,7 @@ async def create_event(
         address=event.address,
         status=event.status,
         format=event.format,
+        online_link=online_link,
         photo=photo_path,
         schedule=schedule_path,
         creator_id=user.id
@@ -68,6 +70,31 @@ async def create_event(
         "registration_link": registration_link,
         "event_link": f"http://localhost:3001/events/{new_event.id}"
     }
+
+
+@router.patch("/change-online-link/{event_id}/")
+@router.put("/change-online-link/{event_id}/")
+async def change_online_link_for_event(
+    event_id: int,
+    online_link: ChangeOnlineLinkSchema,
+    token: str = Depends(oauth_scheme),
+    db: AsyncSession = Depends(get_async_session)
+):
+    user = await get_user_profile_by_email(token, db)
+
+    stmt = select(Event).where(Event.id == event_id)
+    result = await db.execute(stmt)
+    event = result.scalar_one_or_none()
+
+    if not event:
+        return {"msg": "Event doesn't exist"}
+    
+    if event.creator_id != user.id:
+        return {"msg": "User isn't a event creator"}
+    
+    event.online_link = str(online_link.online_link)
+    await db.commit()
+    return {"msg": "Link for online event was changed"}
 
 
 @router.post("/upload_event_files/{event_id}/", response_model=EventCreateResponseSchema)
