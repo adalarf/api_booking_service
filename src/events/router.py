@@ -252,7 +252,7 @@ async def invite_users(users_invited_to_event: EventInviteSchema, token: str = D
 
 @router.get("/view/", response_model=List[EventInfoSchema])
 async def view_all_events(s3_client: S3Client = Depends(get_s3_client), db: AsyncSession = Depends(get_async_session)):
-    stmt = select(Event).options(selectinload(Event.event_dates_times))
+    stmt = select(Event).where(Event.status!=StatusEnum.close).options(selectinload(Event.event_dates_times))
     result = await db.execute(stmt)
     events = result.scalars().all()
     
@@ -322,7 +322,7 @@ async def view_participate_events(s3_client: S3Client = Depends(get_s3_client),
 async def view_all_events(format: str,
                           s3_client: S3Client = Depends(get_s3_client),
                           db: AsyncSession = Depends(get_async_session)):
-    stmt = select(Event).where(Event.format == format).options(selectinload(Event.event_dates_times))
+    stmt = select(Event).where(Event.format == format, Event.status!=StatusEnum.close).options(selectinload(Event.event_dates_times))
     result = await db.execute(stmt)
     events = result.scalars().all()
     

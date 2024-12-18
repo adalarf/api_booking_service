@@ -2,7 +2,7 @@ from fastapi import UploadFile, Body, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 from auth.models import User
-from events.models import Event, EventFile, CustomField, Booking, CustomValue, EventDateTime
+from events.models import Event, EventFile, CustomField, Booking, CustomValue, EventDateTime, StatusEnum
 from events.schemas import EventCreateSchema, EmailSchema, EventRegistrationSchema, FilterSchema, UpdateCustomFieldSchema, UpdateEventDateTimeSchema, EventDateTimeSchema
 from cryptography.fernet import Fernet
 from typing import List, Optional
@@ -370,6 +370,9 @@ def collect_filters(filters: Optional[FilterSchema]):
         return []
 
     conditions = []
+
+    if filters:
+        conditions.append(Event.status != StatusEnum.close)
 
     if filters.city:
         conditions.append(Event.city.ilike(f"%{filters.city}%"))
