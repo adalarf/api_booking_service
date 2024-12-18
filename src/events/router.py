@@ -347,7 +347,7 @@ async def view_events(event_id: int,
     return event_info
 
 
-@router.get("/view-closed/{event_id}/", response_model=EventSchema)
+@router.get("/{event_id}/view-closed/", response_model=EventSchema)
 async def view_closed_events(event_id: int,
                           token: str = Depends(oauth_scheme),
                           s3_client: S3Client = Depends(get_s3_client),
