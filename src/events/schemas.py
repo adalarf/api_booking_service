@@ -90,8 +90,13 @@ class EventInviteSchema(BaseModel):
     users_emails: List[EmailSchema]
 
 
+class CustomFieldsRegistrationSchema(BaseModel):
+    title: str
+    value: str
+
+
 class EventRegistrationSchema(BaseModel):
-    custom_fields: Optional[List[CustomFieldSchema]] = []
+    custom_fields: Optional[List[CustomFieldsRegistrationSchema]] = []
     event_date_time_id: int
 
 

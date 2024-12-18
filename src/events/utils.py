@@ -347,13 +347,18 @@ async def register_for_event(
     await db.flush()
     
     if event.custom_fields:
-        for field_data, custom_field in zip(registration_fields.custom_fields, event.custom_fields):
-            custom_value = CustomValue(
-                value=field_data.title,
-                custom_field_id=custom_field.id,
-                booking_id=booking.id
+        for field_data in registration_fields.custom_fields:
+            matched_field = next(
+                (cf for cf in event.custom_fields if cf.title == field_data.title),
+                None,
             )
-            db.add(custom_value)
+            if matched_field:
+                custom_value = CustomValue(
+                    value=field_data.value,
+                    custom_field_id=matched_field.id,
+                    booking_id=booking.id,
+                )
+                db.add(custom_value)
     
     await db.commit()
 
