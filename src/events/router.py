@@ -332,7 +332,23 @@ async def view_all_events(format: str,
 
 
 @router.get("/{event_id}/view/", response_model=EventSchema)
-async def view_all_events(event_id: int,
+async def view_events(event_id: int,
+                          s3_client: S3Client = Depends(get_s3_client),
+                          db: AsyncSession = Depends(get_async_session)):
+    stmt = select(Event).where(Event.id == event_id).options(selectinload(Event.event_dates_times).selectinload(EventDateTime.date_time_bookings),
+                                                             selectinload(Event.creator))
+    result = await db.execute(stmt)
+    event = result.scalar_one_or_none()
+    if event.status == StatusEnum.close:
+        raise HTTPException(detail="Event is closed", status_code=403)
+
+    event_info = get_event(event, s3_client)
+    
+    return event_info
+
+
+@router.get("/view-closed/{event_id}/", response_model=EventSchema)
+async def view_closed_events(event_id: int,
                           token: str = Depends(oauth_scheme),
                           s3_client: S3Client = Depends(get_s3_client),
                           db: AsyncSession = Depends(get_async_session)):
@@ -361,7 +377,7 @@ async def view_all_events(event_id: int,
         has_invite = invite_result.scalar_one_or_none()
 
         if not is_registered and not has_invite:
-            raise HTTPException(status_code=403, detail="You do not have access to this event")
+            raise HTTPException(detail="You do not have access to this event")
 
     event_info = get_event(event, s3_client)
     
