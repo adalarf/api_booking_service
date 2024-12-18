@@ -79,7 +79,6 @@ class EventUpdateSchema(BaseModel):
 class EventCreateResponseSchema(BaseModel):
     msg: str
     event_id: int
-    registration_link: str
     event_link: str
 
 

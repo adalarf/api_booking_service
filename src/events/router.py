@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, UploadFile, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, distinct, and_
+from sqlalchemy import select, distinct, and_, delete
 from sqlalchemy.orm import joinedload
 from events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema, EventInfoSchema, EventSchema, FilterSchema, MessageSchema, ChangeOnlineLinkSchema, EventUpdateSchema
-from events.models import Event, Booking, EventDateTime
-from events.utils import upload_photo, upload_files_for_event, add_custom_fields_to_event, add_dates_and_times_to_event, create_registration_link, send_email, register_for_event, get_events, get_event_info, get_event, collect_filters, send_message_to_email, update_custom_fields_for_event, update_dates_and_times_for_event, create_new_custom_fields_for_event, create_new_dates_and_times_for_event
+from events.models import Event, Booking, EventDateTime, EventInvite, StatusEnum
+from events.utils import upload_photo, upload_files_for_event, add_custom_fields_to_event, add_dates_and_times_to_event, send_email, register_for_event, get_events, get_event_info, get_event, collect_filters, send_message_to_email, update_custom_fields_for_event, update_dates_and_times_for_event, create_new_custom_fields_for_event, create_new_dates_and_times_for_event
 from auth.utils import oauth_scheme
 from auth.models import User
 from user_profile.utils import get_user_profile_by_email
@@ -60,15 +60,10 @@ async def create_event(
     db.add(new_event)
     await db.commit()
     await db.refresh(new_event)
-    new_event_id = new_event.id
-    registration_link = create_registration_link(new_event_id)
-    new_event.registration_link = registration_link
-    await db.commit()
 
     return {
         "msg": "Event created",
         "event_id": new_event.id,
-        "registration_link": registration_link,
         "event_link": f"http://localhost:3001/events/{new_event.id}"
     }
 
@@ -77,7 +72,7 @@ async def create_event(
 @router.put("/update/{event_id}/")
 async def update_event(
     event_id: int,
-    updated_event: EventCreateSchema = Body(...),
+    updated_event: EventUpdateSchema = Body(...),
     token: str = Depends(oauth_scheme),
     s3_client: S3Client = Depends(get_s3_client),
     db: AsyncSession = Depends(get_async_session),
@@ -227,7 +222,6 @@ async def upload_event_files(
 async def invite_users(users_invited_to_event: EventInviteSchema, token: str = Depends(oauth_scheme), db: AsyncSession = Depends(get_async_session)):
     user = await get_user_profile_by_email(token, db)
     event_id = users_invited_to_event.event_id
-    stmt = select(Event).where(Event.id == event_id)
 
     stmt = select(Event).where(Event.id == event_id).options(selectinload(Event.creator))
     event_result = await db.execute(stmt)
@@ -237,7 +231,11 @@ async def invite_users(users_invited_to_event: EventInviteSchema, token: str = D
         creator = existing_event.creator
         if creator == user:
             for invited_user in users_invited_to_event.users_emails:
-                await send_email(existing_event.registration_link, existing_event.name, invited_user)
+                invite = EventInvite(email=invited_user.email, event_id=event_id)
+                db.add(invite)
+                await send_email(existing_event.id, existing_event.name, invited_user)
+            
+            await db.commit()
 
             return {
                 "msg": "Registration link was sent successfully",
@@ -335,82 +333,39 @@ async def view_all_events(format: str,
 
 @router.get("/{event_id}/view/", response_model=EventSchema)
 async def view_all_events(event_id: int,
+                          token: str = Depends(oauth_scheme),
                           s3_client: S3Client = Depends(get_s3_client),
                           db: AsyncSession = Depends(get_async_session)):
+    user = await get_user_profile_by_email(token, db)
     stmt = select(Event).where(Event.id == event_id).options(selectinload(Event.event_dates_times).selectinload(EventDateTime.date_time_bookings),
-                                                             selectinload(Event.creator))
+                                                             selectinload(Event.creator),
+                                                             selectinload(Event.invites))
     result = await db.execute(stmt)
     event = result.scalar_one_or_none()
+    if event.status == StatusEnum.close:
+        registered_stmt = (
+            select(Booking).where(and_(
+                    Booking.user_id == user.id,
+                    Booking.event_date_time_id.in_([dt.id for dt in event.event_dates_times]))
+                    ))
+        registration_result = await db.execute(registered_stmt)
+        is_registered = registration_result.scalar_one_or_none()
+
+        invite_stmt = (
+            select(EventInvite)
+            .where(and_(
+                    EventInvite.event_id == event.id,
+                    EventInvite.email == user.email))
+        )
+        invite_result = await db.execute(invite_stmt)
+        has_invite = invite_result.scalar_one_or_none()
+
+        if not is_registered and not has_invite:
+            raise HTTPException(status_code=403, detail="You do not have access to this event")
+
     event_info = get_event(event, s3_client)
     
     return event_info
-
-
-@router.get("/join/{registration_link}/")
-async def get_event_dates_and_times_info(registration_link: str,
-                                    token: str = Depends(oauth_scheme),
-                                    db: AsyncSession = Depends(get_async_session)):
-    user = await get_user_profile_by_email(token, db)
-    stmt = select(Event).where(Event.registration_link == registration_link).options(
-        selectinload(Event.custom_fields)
-    )
-    event_result = await db.execute(stmt)
-    existing_event = event_result.scalar_one_or_none()
-    if existing_event is None:
-        return {"msg": "Event not found or invalid link"}
-    
-    dates_times_stmt = (
-        select(EventDateTime)
-        .where(EventDateTime.event_id == existing_event.id)
-    )
-    dates_times_result = await db.execute(dates_times_stmt)
-    event_dates_times = dates_times_result.scalars().all()
-
-    dates_info = [
-        {
-            "date_time_id": event_date_time.id,
-            "start_date": event_date_time.start_date,
-            "end_date": event_date_time.end_date,
-            "start_time": event_date_time.start_time,
-            "end_time": event_date_time.end_time,
-            "seats_number": event_date_time.seats_number,
-        }
-        for event_date_time in event_dates_times
-    ]
-    if existing_event.custom_fields:
-        custom_fields_info = [
-            {
-                "field_id": custom_field.id,
-                "title": custom_field.title
-            }
-            for custom_field in existing_event.custom_fields
-        ]
-
-        return {"dates": dates_info, "custom_fields": custom_fields_info}
-    
-    return {"dates": dates_info}
-
-    
-@router.post("/join/{registration_link}/")
-async def register_for_event_by_link(
-    registration_link: str,
-    registration_fields: EventRegistrationSchema,
-    token: str = Depends(oauth_scheme),
-    db: AsyncSession = Depends(get_async_session)
-):
-    user = await get_user_profile_by_email(token, db)
-    
-    stmt = select(Event).where(Event.registration_link == registration_link).options(
-        selectinload(Event.event_dates_times),
-        selectinload(Event.custom_fields)
-    )
-    event_result = await db.execute(stmt)
-    event = event_result.scalar_one_or_none()
-    
-    if event is None:
-        raise HTTPException(status_code=404, detail="Event not found or invalid link")
-    
-    return await register_for_event(event, registration_fields, user.id, db)
 
 
 @router.get("/register/{event_id}/")
@@ -479,12 +434,20 @@ async def register_for_event_by_id(
         raise HTTPException(status_code=404, detail="Event not found")
     
     if event.status == "close":
-        raise HTTPException(
-            status_code=403,
-            detail="Registration for this event is closed. You can only register with a link."
+        invite = await db.execute(
+            select(EventInvite).where(EventInvite.email == user.email, EventInvite.event_id == event_id)
         )
+        if not invite.scalar_one_or_none():
+            return "Registration by link is required for this event."
     
-    return await register_for_event(event, registration_fields, user.id, db)
+    response = await register_for_event(event, registration_fields, user.id, db)
+
+    await db.execute(
+        delete(EventInvite).where(EventInvite.email == user.email, EventInvite.event_id == event_id)
+    )
+    await db.commit()
+
+    return response
 
 
 @router.delete("/cancel-booking/{event_id}/")

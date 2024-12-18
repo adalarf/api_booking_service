@@ -50,7 +50,6 @@ class Event(Base):
     format = Column(Enum(FormatEnum, native_enum=False), nullable=False)
     photo = Column(String, nullable=True)
     schedule = Column(String, nullable=True)
-    registration_link = Column(String, nullable=True)
     online_link = Column(String, nullable=True)
     creator_id = Column(Integer, ForeignKey("user.id"), nullable=True)
 
@@ -58,6 +57,7 @@ class Event(Base):
     event_dates_times = relationship("EventDateTime", back_populates="event_initiator", cascade="all, delete")
     creator = relationship("User", back_populates="created_event")
     files = relationship("EventFile", back_populates="event_files", cascade="all, delete")
+    invites = relationship("EventInvite", back_populates="invited_event", cascade="all, delete")
 
     @hybrid_property
     def state(self):
@@ -127,6 +127,16 @@ class EventFile(Base):
 
     event_id = Column(Integer, ForeignKey("event.id"))
     event_files = relationship("Event", back_populates="files")
+
+
+class EventInvite(Base):
+    __tablename__ = "event_invite"
+
+    id = Column(Integer, primary_key=True)
+    email = Column(String, nullable=False)
+    event_id = Column(Integer, ForeignKey("event.id", ondelete="CASCADE"), nullable=False)
+
+    invited_event = relationship("Event", back_populates="invites")
 
 
 class Booking(Base):

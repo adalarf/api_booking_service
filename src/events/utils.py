@@ -9,10 +9,9 @@ from typing import List, Optional
 from email.message import EmailMessage
 from config import REGISTATION_LINK_CIPHER_KEY, EMAIL_SENDER, EMAIL_PASSWORD, EMAIL_HOST, EMAIL_PORT
 from s3 import S3Client
-import shutil
 import secrets
-import aiosmtplib
 import base64
+import aiosmtplib
 
 
 cipher = Fernet(REGISTATION_LINK_CIPHER_KEY.encode())
@@ -37,6 +36,18 @@ async def upload_files_for_event(files: Optional[List[UploadFile]] = None,
 
     return event_files
 
+def create_registration_link(event_id: str) -> str:
+    secret = secrets.token_urlsafe()
+    registration_link = f"{event_id}/{secret}/"
+    encoded_link = base64.urlsafe_b64encode(registration_link.encode()).decode()
+    return encoded_link
+
+
+def decrypt_registration_link(encrypted_link: str) -> str:
+    decrypted_link = cipher.decrypt(encrypted_link.encode()).decode()
+    decoded_link = base64.urlsafe_b64decode(decrypted_link.encode()).decode()
+    return decoded_link
+
 
 def add_custom_fields_to_event(new_event: Event, event: EventCreateSchema = Body(...)):
     if event.custom_fields:
@@ -56,13 +67,6 @@ def add_dates_and_times_to_event(new_event: Event, event: EventCreateSchema = Bo
         )
 
         new_event.event_dates_times.append(new_event_date_time)
-
-
-def create_registration_link(event_id: str) -> str:
-    secret = secrets.token_urlsafe()
-    registration_link = f"{event_id}/{secret}/"
-    encoded_link = base64.urlsafe_b64encode(registration_link.encode()).decode()
-    return encoded_link
 
 
 async def update_custom_fields_for_event(event: Event, custom_fields: List[UpdateCustomFieldSchema], db: AsyncSession):
@@ -125,23 +129,13 @@ async def create_new_dates_and_times_for_event(event: Event, new_event_dates_tim
     await db.flush()
 
 
-def encrypt_registration_link(link: str) -> str:
-    return cipher.encrypt(link.encode()).decode()
-
-
-def decrypt_registration_link(encrypted_link: str) -> str:
-    decrypted_link = cipher.decrypt(encrypted_link.encode()).decode()
-    decoded_link = base64.urlsafe_b64decode(decrypted_link.encode()).decode()
-    return decoded_link
-
-
-async def send_email(registration_link: str, event_name: str, receiver: EmailSchema):
-    registration_link_decrypted = decrypt_registration_link(registration_link)
+async def send_email(event_id: str, event_name: str, receiver: EmailSchema):
+    event_link = f"http://localhost:3001/events/{event_id}"
     sender = EMAIL_SENDER
     email_host = EMAIL_HOST
     email_port = EMAIL_PORT
     email_password = EMAIL_PASSWORD
-    message = f"Здравствуйте!\nВы были приглашены на мероприятие - {event_name}\nСсылка на регистрацию: {registration_link_decrypted}"
+    message = f"Здравствуйте!\nВы были приглашены на мероприятие - {event_name}\nСсылка на регистрацию: {event_link}"
     email = EmailMessage()
     email["From"] = sender
     email["To"] = receiver.email
