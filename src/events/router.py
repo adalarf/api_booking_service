@@ -541,7 +541,7 @@ async def filter_events(
 ):
     stmt = select(Event).distinct().join(
         EventDateTime, Event.id == EventDateTime.event_id, isouter=True
-        ).join(User, Event.creator_id == User.id).options(
+        ).join(User, Event.creator_id == User.id).where(Event.status != StatusEnum.close).order_by(Event.id).options(
         selectinload(Event.event_dates_times),
         selectinload(Event.creator)
     )
