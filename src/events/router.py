@@ -265,7 +265,7 @@ async def view_all_my_events(s3_client: S3Client = Depends(get_s3_client),
                           token: str = Depends(oauth_scheme),
                           db: AsyncSession = Depends(get_async_session)):
     user = await get_user_profile_by_email(token, db)
-    stmt = select(Event).where(Event.creator_id == user.id).options(selectinload(Event.event_dates_times))
+    stmt = select(Event).where(Event.creator_id == user.id).distinct().options(selectinload(Event.event_dates_times))
     result = await db.execute(stmt)
     events = result.scalars().all()
     
@@ -489,7 +489,22 @@ async def cancel_booking(
     await db.commit()
 
     return {"msg": "Booking was deleted"}
-    
+
+
+@router.get("/member/{event_id}/")
+async def is_event_member(
+    event_id: int,
+    token: str = Depends(oauth_scheme),
+    db: AsyncSession = Depends(get_async_session)
+    ):
+
+    user = await get_user_profile_by_email(token, db)
+
+    stmt = select(Booking).join(EventDateTime).where(EventDateTime.event_id == event_id, Booking.user_id == user.id)
+    result = await db.execute(stmt)
+    member = bool(result.scalar_one_or_none())
+    return member
+
 
 @router.post("/message/{event_id}/")
 async def send_message_to_event_participants(
