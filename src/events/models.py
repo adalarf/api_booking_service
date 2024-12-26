@@ -115,7 +115,7 @@ class CustomField(Base):
     
     event_id = Column(Integer, ForeignKey("event.id"))
     event_custom_field = relationship("Event", back_populates="custom_fields")
-    custom_values = relationship("CustomValue", back_populates="custom_fields_for_values", uselist=False, cascade="all, delete")
+    custom_values = relationship("CustomValue", back_populates="custom_fields_for_values", cascade="all, delete")
 
 
 class EventFile(Base):
@@ -157,7 +157,7 @@ class CustomValue(Base):
     id = Column(Integer, primary_key=True)
     value = Column(String, nullable=False)
 
-    custom_field_id = Column(Integer, ForeignKey("custom_field.id"), unique=True)
+    custom_field_id = Column(Integer, ForeignKey("custom_field.id"))
     booking_id = Column(Integer, ForeignKey("booking.id"))
 
     custom_fields_for_values = relationship("CustomField", back_populates="custom_values")
