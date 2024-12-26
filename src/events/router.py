@@ -153,13 +153,13 @@ async def cancel_event(
     event = result.scalar_one_or_none()
 
     if not event:
-        return {"msg": "Event doesn't exist"}
+        raise HTTPException(detail="Event doesn't exist", status_code=404)
     
     if event.creator_id != user.id:
-        return {"msg": "User isn't a event creator"}
+        raise HTTPException(detail="User isn't a event creator", status_code=403)
     
     if event.state != "Открыто":
-        return {"msg": "Event doesn't open"}
+        raise HTTPException(detail="Event doesn't have 'open' state", status_code=403)
 
     await db.delete(event)
     await db.commit()
@@ -402,6 +402,7 @@ async def get_register_by_event_id_info(
     dates_times_stmt = (
         select(EventDateTime)
         .where(EventDateTime.event_id == existing_event.id)
+        .order_by(EventDateTime.start_date, EventDateTime.start_time)
     )
     dates_times_result = await db.execute(dates_times_stmt)
     event_dates_times = dates_times_result.scalars().all()
@@ -486,6 +487,12 @@ async def cancel_booking(
         return {"msg": "User isn't a member of the event"}
     
     await db.delete(booking)
+
+    event_date_time_slot_stmt = select(EventDateTime).where(EventDateTime.id == booking.event_date_time_id)
+    existing_event_date_time_slot = await db.execute(event_date_time_slot_stmt)
+    event_date_time_slot = existing_event_date_time_slot.scalar_one_or_none()
+    event_date_time_slot.seats_number += 1
+
     await db.commit()
 
     return {"msg": "Booking was deleted"}
