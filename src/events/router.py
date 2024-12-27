@@ -123,15 +123,16 @@ async def update_event(
 
     await db.commit()
 
-    participants = await db.execute(
-        db.query(User)
+    stmt = (
+        select(User)
         .join(Booking, Booking.user_id == User.id)
         .filter(Booking.event_date_time_id.in_([dt.id for dt in event.event_dates_times]))
     )
-    participants = participants.scalars().all()
-
+    participants_result = await db.execute(stmt)
+    participants = participants_result.scalars().all()
+    
     for participant in participants:
-        await send_message_to_email("Please check the updated details.", f"Event '{event.name}' has been updated", participant.email)
+        await send_message_to_email("Пожалуйста проверьте обновлённое мероприятие", f"Мероприятие '{event.name}' было обновлено", participant.email)
 
     return {
         "msg": "Event updated successfully",
@@ -160,6 +161,17 @@ async def cancel_event(
     
     if event.state != "Открыто":
         raise HTTPException(detail="Event doesn't have 'open' state", status_code=403)
+    
+    stmt = (
+        select(User)
+        .join(Booking, Booking.user_id == User.id)
+        .filter(Booking.event_date_time_id.in_([dt.id for dt in event.event_dates_times]))
+    )
+    participants_result = await db.execute(stmt)
+    participants = participants_result.scalars().all()
+
+    for participant in participants:
+        await send_message_to_email("Ваше мероприятие удалено", f"Мероприятие '{event.name}' было удалено", participant.email)
 
     await db.delete(event)
     await db.commit()
