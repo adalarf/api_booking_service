@@ -255,8 +255,10 @@ async def view_all_events(s3_client: S3Client = Depends(get_s3_client), db: Asyn
     stmt = select(Event).where(Event.status!=StatusEnum.close).options(selectinload(Event.event_dates_times))
     result = await db.execute(stmt)
     events = result.scalars().all()
+
+    filtered_events = [event for event in events if event.state != "Завершено"]
     
-    event_list = get_events(events, s3_client)
+    event_list = get_events(filtered_events, s3_client)
     return event_list
 
 
@@ -312,8 +314,10 @@ async def view_participate_events(s3_client: S3Client = Depends(get_s3_client),
     )
     result = await db.execute(stmt)
     events = result.scalars().all()
+
+    filtered_events = [event for event in events if event.state != "Завершено"]
     
-    event_list = get_events(events, s3_client)
+    event_list = get_events(filtered_events, s3_client)
     return event_list
 
 
@@ -325,8 +329,10 @@ async def view_all_events(format: str,
     stmt = select(Event).where(Event.format == format, Event.status!=StatusEnum.close).options(selectinload(Event.event_dates_times))
     result = await db.execute(stmt)
     events = result.scalars().all()
+
+    filtered_events = [event for event in events if event.state != "Завершено"]
     
-    event_list = get_events(events, s3_client)
+    event_list = get_events(filtered_events, s3_client)
     
     return event_list
 
@@ -576,6 +582,8 @@ async def filter_events(
     result = await db.execute(stmt)
     events = result.scalars().all()
 
-    event_list = get_events(events, s3_client)
+    filtered_events = [event for event in events if event.state != "Завершено"]
+
+    event_list = get_events(filtered_events, s3_client)
     
     return event_list
