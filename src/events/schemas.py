@@ -51,22 +51,22 @@ class UpdateEventDateTimeSchema(BaseModel):
 
 
 class UpdateCustomFieldSchema(BaseModel):
-    id: int
-    title: Optional[str]
+    id: Optional[int] = None
+    title: Optional[str] = None
 
 
 class EventUpdateSchema(BaseModel):
-    name: Optional[str]
-    description: Optional[str]
-    visit_cost: Optional[float]
-    city: Optional[str]
-    address: Optional[str]
-    status: Optional[StatusEnum]
-    format: Optional[FormatEnum]
-    custom_fields: Optional[List[CustomFieldSchema]] = []
-    event_dates_times: Optional[List[UpdateEventDateTimeSchema]]
-    new_custom_fields: Optional[List[UpdateCustomFieldSchema]] = []
-    new_event_dates_times: Optional[List[EventDateTimeSchema]]
+    name: Optional[str] = None
+    description: Optional[str] = None
+    visit_cost: Optional[float] = None
+    city: Optional[str] = None
+    address: Optional[str] = None
+    status: Optional[StatusEnum] = None
+    format: Optional[FormatEnum] = None
+    custom_fields: Optional[List[UpdateCustomFieldSchema]] = []
+    event_dates_times: Optional[List[UpdateEventDateTimeSchema]] = []
+    new_custom_fields: Optional[List[CustomFieldSchema]] = []
+    new_event_dates_times: Optional[List[EventDateTimeSchema]] = []
 
     @model_validator(mode='before')
     @classmethod

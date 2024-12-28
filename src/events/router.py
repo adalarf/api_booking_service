@@ -101,13 +101,10 @@ async def update_event(
             await s3_client.delete_file(event.schedule)
         event.schedule = await upload_photo(schedule, schedule.filename, s3_client)
 
-    event.name = updated_event.name
-    event.description = updated_event.description
-    event.visit_cost = updated_event.visit_cost
-    event.city = updated_event.city
-    event.address = updated_event.address
-    event.status = updated_event.status
-    event.format = updated_event.format
+    for field, value in updated_event.dict(exclude_unset=True).items():
+        if field not in {"custom_fields", "new_custom_fields", "event_dates_times", "new_event_dates_times"}:
+            if value is not None:
+                setattr(event, field, value)
 
     if updated_event.custom_fields:
         await update_custom_fields_for_event(event, updated_event.custom_fields, db)
