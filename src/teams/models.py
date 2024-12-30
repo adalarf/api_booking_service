@@ -14,7 +14,7 @@ class Team(Base):
     registration_link = Column(String, nullable=True)
 
     creator = relationship("User", back_populates="created_teams")
-    members = relationship("UserTeam", back_populates="team")
+    members = relationship("UserTeam", back_populates="team", cascade="all, delete")
 
 
 class UserTeam(Base):
@@ -22,7 +22,7 @@ class UserTeam(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("user.id"), nullable=True)
-    team_id = Column(Integer, ForeignKey("team.id"), nullable=False)
+    team_id = Column(Integer, ForeignKey("team.id", ondelete="CASCADE"), nullable=False)
     is_admin = Column(Boolean, default=False)
     registration_link = Column(String, nullable=True)
 

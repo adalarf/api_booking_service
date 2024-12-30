@@ -2,12 +2,13 @@ from fastapi import APIRouter, Depends, UploadFile, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, distinct, and_, delete
 from sqlalchemy.orm import joinedload
-from events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema, EventInfoSchema, EventSchema, FilterSchema, MessageSchema, ChangeOnlineLinkSchema, EventUpdateSchema
+from events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema, EventInfoSchema, EventSchema, FilterSchema, MessageSchema, ChangeOnlineLinkSchema, EventUpdateSchema, TeamInvitationSchema
 from events.models import Event, Booking, EventDateTime, EventInvite, StatusEnum
 from events.utils import upload_photo, upload_files_for_event, add_custom_fields_to_event, add_dates_and_times_to_event, send_email, register_for_event, get_events, get_event_info, get_event, collect_filters, send_message_to_email, update_custom_fields_for_event, update_dates_and_times_for_event, create_new_custom_fields_for_event, create_new_dates_and_times_for_event
 from auth.utils import oauth_scheme
 from auth.models import User
 from user_profile.utils import get_user_profile_by_email
+from teams.models import Team, UserTeam
 from database import get_async_session
 from typing import List, Optional
 from sqlalchemy.orm import selectinload
@@ -596,3 +597,41 @@ async def filter_events(
     event_list = get_events(filtered_events, s3_client)
     
     return event_list
+
+
+@router.post("/invite-team/{event_id}/")
+async def send_event_invitation_to_team_members(
+    event_id: int,
+    team_invitation: TeamInvitationSchema,
+    token: str = Depends(oauth_scheme),
+    db: AsyncSession = Depends(get_async_session)
+    ):
+    user = await get_user_profile_by_email(token, db)
+
+    stmt = select(Event).where(Event.id == event_id)
+    stmt_result = await db.execute(stmt)
+    event = stmt_result.scalar_one_or_none()
+
+    if not event:
+        raise HTTPException(detail="Event doesn't exist", status_code=404)
+    
+    stmt = select(UserTeam).where(UserTeam.team_id == team_invitation.team_id, 
+                                  UserTeam.user_id == user.id,
+                                  UserTeam.is_admin == True)
+    stmt_result = await db.execute(stmt)
+    team = stmt_result.scalar_one_or_none()
+
+    if not team:
+        raise HTTPException(detail="Team doesn't exist or user isn't a creator", status_code=404)
+    
+    stmt = select(UserTeam).where(UserTeam.team_id == team_invitation.team_id,
+                                  UserTeam.is_admin == False).options(
+                                      selectinload(UserTeam.user)
+                                  )
+    stmt_result = await db.execute(stmt)
+    team_members = stmt_result.scalars().all()
+
+    for team_member in team_members:
+        await send_email(event_id, event.name, team_member.user)
+
+    return {"msg": "Team was invited"}

@@ -185,3 +185,7 @@ class MessageSchema(BaseModel):
 
 class ChangeOnlineLinkSchema(BaseModel):
     online_link: AnyHttpUrl
+
+
+class TeamInvitationSchema(BaseModel):
+    team_id: int
