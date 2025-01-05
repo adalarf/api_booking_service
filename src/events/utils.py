@@ -1,20 +1,41 @@
-from fastapi import UploadFile, Body, HTTPException
+from fastapi import UploadFile, Body, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 from auth.models import User
 from events.models import Event, EventFile, CustomField, Booking, CustomValue, EventDateTime, StatusEnum
 from events.schemas import EventCreateSchema, EmailSchema, EventRegistrationSchema, FilterSchema, UpdateCustomFieldSchema, UpdateEventDateTimeSchema, EventDateTimeSchema
 from cryptography.fernet import Fernet
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from typing import List, Optional
+from database import async_session_maker
 from email.message import EmailMessage
 from config import REGISTATION_LINK_CIPHER_KEY, EMAIL_SENDER, EMAIL_PASSWORD, EMAIL_HOST, EMAIL_PORT
 from s3 import S3Client
+from datetime import datetime, timedelta
 import secrets
 import base64
 import aiosmtplib
 
 
 cipher = Fernet(REGISTATION_LINK_CIPHER_KEY.encode())
+
+async def delete_expired_bookings():
+    async with async_session_maker() as db:
+        stmt = select(Booking).where(Booking.expiration_date <= datetime.utcnow())
+        expired_bookings = await db.execute(stmt)
+        for booking in expired_bookings.scalars().all():
+            await db.delete(booking)
+            event_date_time_slot_stmt = select(EventDateTime).where(EventDateTime.id == booking.event_date_time_id)
+            existing_event_date_time_slot = await db.execute(event_date_time_slot_stmt)
+            event_date_time_slot = existing_event_date_time_slot.scalar_one_or_none()
+            event_date_time_slot.seats_number += 1
+        await db.commit()
+
+
+async def schedule_jobs():
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(delete_expired_bookings, "interval", hours=1)
+    scheduler.start()
 
 
 async def upload_photo(file: UploadFile, object_name: str, s3_client: S3Client):
@@ -311,7 +332,8 @@ async def register_for_event(
     event: Event,
     registration_fields: EventRegistrationSchema,
     user_id: int,
-    db: AsyncSession
+    db: AsyncSession,
+    expiration_days: int,
 ):
     date_time_id = registration_fields.event_date_time_id
 
@@ -341,8 +363,16 @@ async def register_for_event(
 
         event_date_time_slot.seats_number -= 1
 
+    event_end_date = max(
+        datetime.combine(event_date_time.end_date, event_date_time.end_time)
+        for event_date_time in event.event_dates_times
+    )
+    expiration_date = event_end_date + timedelta(days=expiration_days)
+
     db.add(event_date_time_slot)
-    booking = Booking(user_id=user_id, booking_date_time=event_date_time_slot)
+    booking = Booking(user_id=user_id, 
+                      booking_date_time=event_date_time_slot, 
+                      expiration_date=expiration_date)
     db.add(booking)
     await db.flush()
     

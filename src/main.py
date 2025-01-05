@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 from auth.utils import clean_revoked_tokens
 from auth.router import router as auth_router
 from user_profile.router import router as profile_router
+from events.utils import schedule_jobs
 from events.router import router as events_router
 from teams.router import router as teams_router
 from database import async_session_maker
@@ -65,3 +66,5 @@ app.mount("/media", StaticFiles(directory="media"), name="media")
 async def on_startup():
     async with async_session_maker() as db:
         await clean_revoked_tokens(db)
+    
+    await schedule_jobs()

@@ -98,6 +98,15 @@ class CustomFieldsRegistrationSchema(BaseModel):
 class EventRegistrationSchema(BaseModel):
     custom_fields: Optional[List[CustomFieldsRegistrationSchema]] = []
     event_date_time_id: int
+    expiration_days: Optional[int] = None
+
+    @field_validator("expiration_days", mode="before")
+    def validate_expiration_days(cls, value):
+        allowed_values = [15, 30, 60, 90]
+        if value is not None and value not in allowed_values:
+            raise ValueError(f"Expiration days must be one of {allowed_values}")
+        return value
+
 
 
 class EventStartTimeSchema(BaseModel):

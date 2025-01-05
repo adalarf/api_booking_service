@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, Enum, Float, Date, Time, ForeignKey
+from sqlalchemy import Column, String, Integer, Enum, Float, Date, Time, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.ext.hybrid import hybrid_property
 from database import Base
@@ -145,6 +145,7 @@ class Booking(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("user.id"))
     event_date_time_id = Column(Integer, ForeignKey("event_date_time.id", ondelete="CASCADE"))
+    expiration_date = Column(DateTime, nullable=True)
 
     booking_values = relationship("CustomValue", back_populates="booking_custom_values", cascade="all, delete")
     user_bookings = relationship("User", back_populates="bookings")

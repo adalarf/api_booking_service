@@ -473,7 +473,7 @@ async def register_for_event_by_id(
         if not invite.scalar_one_or_none():
             return "Registration by link is required for this event."
     
-    response = await register_for_event(event, registration_fields, user.id, db)
+    response = await register_for_event(event, registration_fields, user.id, db, registration_fields.expiration_days)
 
     await db.execute(
         delete(EventInvite).where(EventInvite.email == user.email, EventInvite.event_id == event_id)
