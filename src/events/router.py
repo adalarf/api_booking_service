@@ -504,7 +504,8 @@ async def cancel_booking(
     event_date_time_slot_stmt = select(EventDateTime).where(EventDateTime.id == booking.event_date_time_id)
     existing_event_date_time_slot = await db.execute(event_date_time_slot_stmt)
     event_date_time_slot = existing_event_date_time_slot.scalar_one_or_none()
-    event_date_time_slot.seats_number += 1
+    if event_date_time_slot.seats_number:
+        event_date_time_slot.seats_number += 1
 
     await db.commit()
 
