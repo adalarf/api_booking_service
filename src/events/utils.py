@@ -367,7 +367,9 @@ async def register_for_event(
         datetime.combine(event_date_time.end_date, event_date_time.end_time)
         for event_date_time in event.event_dates_times
     )
-    expiration_date = event_end_date + timedelta(days=expiration_days)
+    expiration_date = None
+    if expiration_days is not None:
+        expiration_date = event_end_date + timedelta(days=expiration_days)
 
     db.add(event_date_time_slot)
     booking = Booking(user_id=user_id, 
