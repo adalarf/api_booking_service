@@ -490,7 +490,7 @@ async def cancel_booking(
     db: AsyncSession = Depends(get_async_session)
 ):
     user = await get_user_profile_by_email(token, db)
-    stmt = select(Booking).join(EventDateTime).where(EventDateTime.event_id == event_id).options(
+    stmt = select(Booking).join(EventDateTime).where(EventDateTime.event_id == event_id, Booking.user_id == user.id).options(
         selectinload(Booking.booking_values)
     )
     result = await db.execute(stmt)
@@ -498,9 +498,6 @@ async def cancel_booking(
 
     if not booking:
         return {"msg": "Booking doesn't exist"}
-    
-    if booking.user_id != user.id:
-        return {"msg": "User isn't a member of the event"}
     
     await db.delete(booking)
 
