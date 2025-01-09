@@ -85,6 +85,7 @@ class EventCreateResponseSchema(BaseModel):
 class EmailSchema(BaseModel):
     email: str
 
+
 class EventInviteSchema(BaseModel):
     event_id: int
     users_emails: List[EmailSchema]
@@ -106,7 +107,6 @@ class EventRegistrationSchema(BaseModel):
         if value is not None and value not in allowed_values:
             raise ValueError(f"Expiration days must be one of {allowed_values}")
         return value
-
 
 
 class EventStartTimeSchema(BaseModel):
@@ -137,6 +137,32 @@ class ContactsSchema(BaseModel):
     vk: Optional[str]
     telegram: Optional[str]
     whatsapp: Optional[str]
+
+class CustomFieldAndValueSchema(BaseModel):
+    field_title: str
+    field_value: str
+
+
+class MemberSchema(BaseModel):
+    id: int
+    first_name: Optional[str]
+    last_name: Optional[str]
+    patronymic: Optional[str]
+    email: str
+    phone_number: Optional[str]
+    vk: Optional[str]
+    telegram: Optional[str]
+    whatsapp: Optional[str]
+    custom_fields: List[CustomFieldAndValueSchema]
+
+
+class EventDateTimeMembersSchema(BaseModel):
+    id: int
+    start_date: str
+    end_date: str
+    start_time: str
+    end_time: str
+    members: List[MemberSchema]
 
 
 class CreatorSchema(BaseModel):

@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, UploadFile, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, distinct, and_, delete
 from sqlalchemy.orm import joinedload
-from events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema, EventInfoSchema, EventSchema, FilterSchema, MessageSchema, ChangeOnlineLinkSchema, EventUpdateSchema, TeamInvitationSchema
-from events.models import Event, Booking, EventDateTime, EventInvite, StatusEnum
+from events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema, EventInfoSchema, EventSchema, FilterSchema, MessageSchema, ChangeOnlineLinkSchema, EventUpdateSchema, TeamInvitationSchema, EventDateTimeMembersSchema
+from events.models import Event, Booking, EventDateTime, EventInvite, StatusEnum, CustomValue, CustomField
 from events.utils import upload_photo, upload_files_for_event, add_custom_fields_to_event, add_dates_and_times_to_event, send_email, register_for_event, get_events, get_event_info, get_event, collect_filters, send_message_to_email, update_custom_fields_for_event, update_dates_and_times_for_event, create_new_custom_fields_for_event, create_new_dates_and_times_for_event
 from auth.utils import oauth_scheme
 from auth.models import User
@@ -525,6 +525,86 @@ async def is_event_member(
     result = await db.execute(stmt)
     member = bool(result.scalar_one_or_none())
     return member
+
+
+@router.get("/members/{event_id}/", response_model=List[EventDateTimeMembersSchema])
+async def get_event_members(
+    event_id: int,
+    token: str = Depends(oauth_scheme),
+    db: AsyncSession = Depends(get_async_session)
+):
+    user = await get_user_profile_by_email(token, db)
+
+    stmt = select(Event).where(Event.id == event_id)
+    stmt_result = await db.execute(stmt)
+    event = stmt_result.scalar_one_or_none()
+
+    if not event:
+        raise HTTPException(detail="Event doesn't exist", status_code=400)
+    
+    if event.creator_id != user.id:
+        raise HTTPException(detail="User isn't a event creator", status_code=400)
+    
+    stmt = (
+        select(
+            EventDateTime.id.label("event_date_time_id"),
+            EventDateTime.start_date, EventDateTime.end_date,
+            EventDateTime.start_time, EventDateTime.end_time,
+            Booking.id.label("booking_id"),
+            User.id.label("user_id"),
+            User.first_name, User.last_name, User.patronymic,
+            User.email, User.phone_number, User.vk, User.telegram, User.whatsapp,
+            CustomField.title.label("field_title"), CustomValue.value.label("field_value")
+        )
+        .join(Booking, Booking.event_date_time_id == EventDateTime.id)
+        .join(User, User.id == Booking.user_id)
+        .outerjoin(CustomValue, CustomValue.booking_id == Booking.id)
+        .outerjoin(CustomField, CustomField.id == CustomValue.custom_field_id)
+        .where(EventDateTime.event_id == event_id)
+    )
+
+    stmt_result = await db.execute(stmt)
+    rows = stmt_result.all()
+
+    event_date_times = {}
+    for row in rows:
+        date_time_id = row.event_date_time_id
+        if date_time_id not in event_date_times:
+            event_date_times[date_time_id] = {
+                "id": date_time_id,
+                "start_date": str(row.start_date),
+                "end_date": str(row.end_date),
+                "start_time": str(row.start_time),
+                "end_time": str(row.end_time),
+                "members": {}
+            }
+        user_id = row.user_id
+        if user_id not in event_date_times[date_time_id]["members"]:
+            event_date_times[date_time_id]["members"][user_id] = {
+                "id": user_id,
+                "first_name": row.first_name,
+                "last_name": row.last_name,
+                "patronymic": row.patronymic,
+                "email": row.email,
+                "phone_number": row.phone_number,
+                "vk": row.vk,
+                "telegram": row.telegram,
+                "whatsapp": row.whatsapp,
+                "custom_fields": []
+            }
+        if row.field_title and row.field_value:
+            event_date_times[date_time_id]["members"][user_id]["custom_fields"].append({
+                "field_title": row.field_title,
+                "field_value": row.field_value
+            })
+
+    result = []
+    for date_time in event_date_times.values():
+        date_time["members"] = list(date_time["members"].values())
+        result.append(EventDateTimeMembersSchema(**date_time))
+
+    return result
+
 
 
 @router.post("/message/{event_id}/")
