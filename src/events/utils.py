@@ -195,13 +195,12 @@ async def send_message_to_email(theme: str, message: str, receiver_email: str):
 def get_start_and_end_dates_and_times(event: Event):
     if event.event_dates_times:
         start_date_obj = min(event.event_dates_times, key=lambda d: d.start_date)
-        end_date_obj = max(event.event_dates_times, key=lambda d: d.end_time)
+        end_date_obj = max(event.event_dates_times, key=lambda d: d.end_date)
 
         start_date = start_date_obj.start_date
         end_date = end_date_obj.end_date
         start_time = start_date_obj.start_time
         end_time = end_date_obj.end_time
-
     else:
         start_date = None
         end_date = None
