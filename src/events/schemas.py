@@ -162,6 +162,8 @@ class EventDateTimeMembersSchema(BaseModel):
     end_date: str
     start_time: str
     end_time: str
+    seats_number: Optional[int]
+    bookings_count: Optional[int]
     members: List[MemberSchema]
 
 

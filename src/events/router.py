@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, UploadFile, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, distinct, and_, delete
+from sqlalchemy import select, distinct, and_, delete, func
 from sqlalchemy.orm import joinedload
 from events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema, EventInfoSchema, EventSchema, FilterSchema, MessageSchema, ChangeOnlineLinkSchema, EventUpdateSchema, TeamInvitationSchema, EventDateTimeMembersSchema
 from events.models import Event, Booking, EventDateTime, EventInvite, StatusEnum, CustomValue, CustomField
@@ -544,6 +544,35 @@ async def get_event_members(
     
     if event.creator_id != user.id:
         raise HTTPException(detail="User isn't a event creator", status_code=400)
+
+    event_date_times_query = (
+        select(
+            EventDateTime.id.label("event_date_time_id"),
+            EventDateTime.start_date, EventDateTime.end_date,
+            EventDateTime.start_time, EventDateTime.end_time,
+            EventDateTime.seats_number,
+            func.count(Booking.id).label("bookings_count")
+        )
+        .join(Booking, Booking.event_date_time_id == EventDateTime.id, isouter=True)
+        .where(EventDateTime.event_id == event_id)
+        .group_by(EventDateTime.id)
+    )
+    event_date_times_result = await db.execute(event_date_times_query)
+    event_date_times_data = event_date_times_result.all()
+
+    event_date_times = {
+        row.event_date_time_id: {
+            "id": row.event_date_time_id,
+            "start_date": str(row.start_date),
+            "end_date": str(row.end_date),
+            "start_time": str(row.start_time),
+            "end_time": str(row.end_time),
+            "seats_number": row.seats_number + row.bookings_count if row.seats_number is not None else None,
+            "bookings_count": row.bookings_count,
+            "members": {}
+        }
+        for row in event_date_times_data
+    }
     
     stmt = (
         select(
@@ -566,7 +595,6 @@ async def get_event_members(
     stmt_result = await db.execute(stmt)
     rows = stmt_result.all()
 
-    event_date_times = {}
     for row in rows:
         date_time_id = row.event_date_time_id
         if date_time_id not in event_date_times:
@@ -576,6 +604,8 @@ async def get_event_members(
                 "end_date": str(row.end_date),
                 "start_time": str(row.start_time),
                 "end_time": str(row.end_time),
+                "seats_number": str(row.seats_number),
+                "bookings_count": str(row.bookings_count),
                 "members": {}
             }
         user_id = row.user_id
