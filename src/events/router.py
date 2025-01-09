@@ -531,6 +531,7 @@ async def is_event_member(
 async def get_event_members(
     event_id: int,
     token: str = Depends(oauth_scheme),
+    s3_client: S3Client = Depends(get_s3_client),
     db: AsyncSession = Depends(get_async_session)
 ):
     user = await get_user_profile_by_email(token, db)
@@ -620,7 +621,7 @@ async def get_event_members(
                 "vk": row.vk,
                 "telegram": row.telegram,
                 "whatsapp": row.whatsapp,
-                "photo": row.photo,
+                "photo": s3_client.config["endpoint_url"] + f"/{s3_client.bucket_name}/{row.photo}" if row.photo else None,
                 "custom_fields": []
             }
         if row.field_title and row.field_value:
