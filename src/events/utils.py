@@ -271,18 +271,23 @@ def get_creator_info(event: Event, s3_client: S3Client):
 
 
 def get_time_slots_descriptions(event: Event):
-    times_with_description = []
-    for date_time in event.event_dates_times:
-        bookings_count = len(date_time.date_time_bookings)
-        times_with_description.append({
+    times_with_description = [
+        {
             "id": date_time.id,
             "start_date": date_time.start_date,
             "end_date": date_time.end_date,
             "start_time": date_time.start_time,
             "end_time": date_time.end_time,
-            "seats_number": None if date_time.seats_number is None else date_time.seats_number + bookings_count,
-            "bookings_count": bookings_count
-        })
+            "seats_number": None if date_time.seats_number is None else date_time.seats_number + len(date_time.date_time_bookings),
+            "bookings_count": len(date_time.date_time_bookings),
+        }
+        for date_time in event.event_dates_times
+    ]
+
+    times_with_description = sorted(
+        times_with_description,
+        key=lambda x: (x["start_date"], x["start_time"])
+    )
 
     return times_with_description
 
