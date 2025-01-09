@@ -581,7 +581,7 @@ async def get_event_members(
             EventDateTime.start_time, EventDateTime.end_time,
             Booking.id.label("booking_id"),
             User.id.label("user_id"),
-            User.first_name, User.last_name, User.patronymic,
+            User.first_name, User.last_name, User.patronymic, User.photo,
             User.email, User.phone_number, User.vk, User.telegram, User.whatsapp,
             CustomField.title.label("field_title"), CustomValue.value.label("field_value")
         )
@@ -620,6 +620,7 @@ async def get_event_members(
                 "vk": row.vk,
                 "telegram": row.telegram,
                 "whatsapp": row.whatsapp,
+                "photo": row.photo,
                 "custom_fields": []
             }
         if row.field_title and row.field_value:

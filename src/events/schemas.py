@@ -153,6 +153,7 @@ class MemberSchema(BaseModel):
     vk: Optional[str]
     telegram: Optional[str]
     whatsapp: Optional[str]
+    photo: Optional[AnyHttpUrl]
     custom_fields: List[CustomFieldAndValueSchema]
 
 
