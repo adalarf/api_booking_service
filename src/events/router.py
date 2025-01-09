@@ -629,9 +629,14 @@ async def get_event_members(
                 "field_title": row.field_title,
                 "field_value": row.field_value
             })
+    
+    sorted_date_times = sorted(
+        event_date_times.values(),
+        key=lambda x: (x["start_date"], x["start_time"])
+    )
 
     result = []
-    for date_time in event_date_times.values():
+    for date_time in sorted_date_times:
         date_time["members"] = list(date_time["members"].values())
         result.append(EventDateTimeMembersSchema(**date_time))
 
