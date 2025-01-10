@@ -42,7 +42,7 @@ class EventCreateSchema(BaseModel):
         return value
 
 class UpdateEventDateTimeSchema(BaseModel):
-    id: int
+    id: Optional[int] = None
     start_date: date
     end_date: date
     start_time: time
@@ -65,8 +65,6 @@ class EventUpdateSchema(BaseModel):
     format: Optional[FormatEnum] = None
     custom_fields: Optional[List[UpdateCustomFieldSchema]] = []
     event_dates_times: Optional[List[UpdateEventDateTimeSchema]] = []
-    new_custom_fields: Optional[List[CustomFieldSchema]] = []
-    new_event_dates_times: Optional[List[EventDateTimeSchema]] = []
 
     @model_validator(mode='before')
     @classmethod

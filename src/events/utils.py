@@ -92,60 +92,52 @@ def add_dates_and_times_to_event(new_event: Event, event: EventCreateSchema = Bo
 
 async def update_custom_fields_for_event(event: Event, custom_fields: List[UpdateCustomFieldSchema], db: AsyncSession):
     for field_data in custom_fields:
-        existing_field = await db.execute(
-            select(CustomField).filter(CustomField.id == field_data.id, CustomField.event_id == event.id)
-        )
-        existing_field = existing_field.scalar_one_or_none()
+        if field_data.id:
+            existing_field = await db.execute(
+                select(CustomField).filter(CustomField.id == field_data.id, CustomField.event_id == event.id)
+            )
+            existing_field = existing_field.scalar_one_or_none()
 
-        if existing_field:
-            existing_field.title = field_data.title or existing_field.title
+            if existing_field:
+                existing_field.title = field_data.title or existing_field.title
+            else:
+                return {"msg": f"Custom field with id {field_data.id} doesn't exist"}
         else:
-            return {"msg": "Custom field doesn't exist"}
+            new_field = CustomField(
+                title=field_data.title,
+                event_id=event.id
+            )
+            db.add(new_field)
 
     await db.flush()
 
 
 async def update_dates_and_times_for_event(event: Event, event_dates_times: List[UpdateEventDateTimeSchema], db: AsyncSession):
     for date_time_data in event_dates_times:
-        existing_date_time = await db.execute(
-            select(EventDateTime).filter(EventDateTime.id == date_time_data.id, EventDateTime.event_id == event.id)
-        )
-        existing_date_time = existing_date_time.scalar_one_or_none()
+        if date_time_data.id:
+            existing_date_time = await db.execute(
+                select(EventDateTime).filter(EventDateTime.id == date_time_data.id, EventDateTime.event_id == event.id)
+            )
+            existing_date_time = existing_date_time.scalar_one_or_none()
 
-        if existing_date_time:
-            existing_date_time.start_date = date_time_data.start_date or existing_date_time.start_date
-            existing_date_time.end_date = date_time_data.end_date or existing_date_time.end_date
-            existing_date_time.start_time = date_time_data.start_time or existing_date_time.start_time
-            existing_date_time.end_time = date_time_data.end_time or existing_date_time.end_time
-            existing_date_time.seats_number = date_time_data.seats_number or existing_date_time.seats_number
+            if existing_date_time:
+                existing_date_time.start_date = date_time_data.start_date or existing_date_time.start_date
+                existing_date_time.end_date = date_time_data.end_date or existing_date_time.end_date
+                existing_date_time.start_time = date_time_data.start_time or existing_date_time.start_time
+                existing_date_time.end_time = date_time_data.end_time or existing_date_time.end_time
+                existing_date_time.seats_number = date_time_data.seats_number or existing_date_time.seats_number
+            else:
+                return {"msg": f"Datetime slot with id {date_time_data.id} doesn't exist"}
         else:
-            return {"msg": "Datetime slot doesn't exist"}
-
-    await db.flush()
-
-
-async def create_new_custom_fields_for_event(event: Event, new_custom_fields: List[UpdateCustomFieldSchema], db: AsyncSession):
-    for field_data in new_custom_fields:
-        new_field = CustomField(
-            title=field_data.title,
-            event_id=event.id
-        )
-        db.add(new_field)
-
-    await db.flush()
-
-
-async def create_new_dates_and_times_for_event(event: Event, new_event_dates_times: List[EventDateTimeSchema], db: AsyncSession):
-    for date_time_data in new_event_dates_times:
-        new_date_time = EventDateTime(
-            start_date=date_time_data.start_date,
-            end_date=date_time_data.end_date,
-            start_time=date_time_data.start_time,
-            end_time=date_time_data.end_time,
-            seats_number=date_time_data.seats_number,
-            event_id=event.id
-        )
-        db.add(new_date_time)
+            new_date_time = EventDateTime(
+                start_date=date_time_data.start_date,
+                end_date=date_time_data.end_date,
+                start_time=date_time_data.start_time,
+                end_time=date_time_data.end_time,
+                seats_number=date_time_data.seats_number,
+                event_id=event.id
+            )
+            db.add(new_date_time)
 
     await db.flush()
 

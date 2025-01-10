@@ -4,7 +4,7 @@ from sqlalchemy import select, distinct, and_, delete, func
 from sqlalchemy.orm import joinedload
 from events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema, EventInfoSchema, EventSchema, FilterSchema, MessageSchema, ChangeOnlineLinkSchema, EventUpdateSchema, TeamInvitationSchema, EventDateTimeMembersSchema
 from events.models import Event, Booking, EventDateTime, EventInvite, StatusEnum, CustomValue, CustomField
-from events.utils import upload_photo, upload_files_for_event, add_custom_fields_to_event, add_dates_and_times_to_event, send_email, register_for_event, get_events, get_event_info, get_event, collect_filters, send_message_to_email, update_custom_fields_for_event, update_dates_and_times_for_event, create_new_custom_fields_for_event, create_new_dates_and_times_for_event
+from events.utils import upload_photo, upload_files_for_event, add_custom_fields_to_event, add_dates_and_times_to_event, send_email, register_for_event, get_events, get_event_info, get_event, collect_filters, send_message_to_email, update_custom_fields_for_event, update_dates_and_times_for_event
 from auth.utils import oauth_scheme
 from auth.models import User
 from user_profile.utils import get_user_profile_by_email
@@ -112,12 +112,6 @@ async def update_event(
 
     if updated_event.event_dates_times:
         await update_dates_and_times_for_event(event, updated_event.event_dates_times, db)
-
-    if updated_event.new_custom_fields:
-        await create_new_custom_fields_for_event(event, updated_event.new_custom_fields, db)
-
-    if updated_event.new_event_dates_times:
-        await create_new_dates_and_times_for_event(event, updated_event.new_event_dates_times, db)
 
     await db.commit()
 
