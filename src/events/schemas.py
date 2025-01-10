@@ -74,6 +74,19 @@ class EventUpdateSchema(BaseModel):
         return value
 
 
+class EventDateTimeToDeteleSchema(BaseModel):
+    id: Optional[int] = None
+
+
+class CustomFieldToDeteleSchema(BaseModel):
+    id: Optional[int] = None
+
+
+class EventRegistrationFieldsToDeleteSchema(BaseModel):
+    custom_fields: Optional[List[CustomFieldToDeteleSchema]] = []
+    event_dates_times: Optional[List[EventDateTimeToDeteleSchema]] = []
+
+
 class EventCreateResponseSchema(BaseModel):
     msg: str
     event_id: int
