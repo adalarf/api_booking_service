@@ -103,15 +103,25 @@ async def update_event(
         event.schedule = await upload_photo(schedule, schedule.filename, s3_client)
 
     for field, value in updated_event.dict(exclude_unset=True).items():
-        if field not in {"custom_fields", "new_custom_fields", "event_dates_times", "new_event_dates_times"}:
+        if field not in {"custom_fields", "event_dates_times"}:
             if value is not None:
                 setattr(event, field, value)
 
-    if updated_event.custom_fields:
-        await update_custom_fields_for_event(event, updated_event.custom_fields, db)
+    incoming_dates_ids = {dt.id for dt in (updated_event.event_dates_times or []) if dt.id}
+    for event_date_time in event.event_dates_times:
+        if event_date_time.id not in incoming_dates_ids:
+            await db.delete(event_date_time)
 
     if updated_event.event_dates_times:
         await update_dates_and_times_for_event(event, updated_event.event_dates_times, db)
+
+    incoming_custom_fields_ids = {cf.id for cf in (updated_event.custom_fields or []) if cf.id}
+    for custom_field in event.custom_fields:
+        if custom_field.id not in incoming_custom_fields_ids:
+            await db.delete(custom_field)
+
+    if updated_event.custom_fields:
+        await update_custom_fields_for_event(event, updated_event.custom_fields, db)
 
     await db.commit()
 
@@ -131,81 +141,6 @@ async def update_event(
         "event_id": event.id,
         "event_link": f"http://localhost:3001/events/{event_id}"
     }
-
-
-@router.delete("/delete-registration-parameters/{event_id}/")
-async def delete_custom_fields_and_dates_times(
-    event_id: int,
-    registration_fields_to_delete: EventRegistrationFieldsToDeleteSchema,
-    token: str = Depends(oauth_scheme),
-    db: AsyncSession = Depends(get_async_session)
-):
-    user = await get_user_profile_by_email(token, db)
-    stmt = select(Event).where(Event.id == event_id).options(selectinload(Event.custom_fields),
-                                                             selectinload(Event.event_dates_times))
-    result = await db.execute(stmt)
-    event = result.scalar_one_or_none()
-
-    if not event:
-        raise HTTPException(detail="Event doesn't exist", status_code=404)
-    
-    if event.creator_id != user.id:
-        raise HTTPException(detail="User isn't a event creator", status_code=403)
-    
-    if event.state != "Открыто":
-        raise HTTPException(detail="Event doesn't have 'open' state", status_code=403)
-    
-    if registration_fields_to_delete.custom_fields:
-        custom_field_ids = [field.id for field in registration_fields_to_delete.custom_fields if field.id]
-        if custom_field_ids:
-            stmt = (
-                select(CustomField)
-                .where(CustomField.id.in_(custom_field_ids), CustomField.event_id == event_id)
-                .options(selectinload(CustomField.custom_values))
-            )
-            result = await db.execute(stmt)
-            custom_fields_to_delete = result.scalars().all()
-
-            if not custom_fields_to_delete:
-                raise HTTPException(detail="No matching custom fields found", status_code=404)
-
-            for field in custom_fields_to_delete:
-                if field.custom_values:
-                    raise HTTPException(
-                        detail=f"Cannot delete custom field with id {field.id} because it has associated custom values",
-                        status_code=400
-                    )
-                await db.delete(field)
-
-    if registration_fields_to_delete.event_dates_times:
-        event_date_time_ids = [date_time.id for date_time in registration_fields_to_delete.event_dates_times if date_time.id]
-        if event_date_time_ids:
-            stmt = (
-                select(EventDateTime)
-                .where(EventDateTime.id.in_(event_date_time_ids), EventDateTime.event_id == event_id)
-            )
-            result = await db.execute(stmt)
-            event_dates_times_to_delete = result.scalars().all()
-
-            if not event_dates_times_to_delete:
-                raise HTTPException(detail="No matching event date/time slots found", status_code=404)
-
-            for date_time in event_dates_times_to_delete:
-                bookings_stmt = select(Booking).where(Booking.event_date_time_id == date_time.id)
-                bookings_result = await db.execute(bookings_stmt)
-                bookings = bookings_result.scalars().all()
-
-                if bookings:
-                    raise HTTPException(
-                        detail=f"Cannot delete date/time slot with id {date_time.id} because it has active bookings",
-                        status_code=400
-                    )
-
-                await db.delete(date_time)
-
-    await db.commit()
-
-    return {"msg": "Registation parameters deleted successfully"}
 
 
 @router.delete("/cancel/{event_id}/")
