@@ -74,6 +74,10 @@ class EventUpdateSchema(BaseModel):
         return value
 
 
+class FilledCustomFieldsResponseSchema(BaseModel):
+    filled_custom_fields: Optional[List[int]] = []
+
+
 class EventCreateResponseSchema(BaseModel):
     msg: str
     event_id: int

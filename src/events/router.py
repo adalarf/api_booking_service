@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, UploadFile, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, distinct, and_, delete, func
 from sqlalchemy.orm import joinedload
-from events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema, EventInfoSchema, EventSchema, FilterSchema, MessageSchema, ChangeOnlineLinkSchema, EventUpdateSchema, TeamInvitationSchema, EventDateTimeMembersSchema
+from events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema, EventInfoSchema, EventSchema, FilterSchema, MessageSchema, ChangeOnlineLinkSchema, EventUpdateSchema, TeamInvitationSchema, EventDateTimeMembersSchema, FilledCustomFieldsResponseSchema
 from events.models import Event, Booking, EventDateTime, EventInvite, StatusEnum, CustomValue, CustomField
 from events.utils import upload_photo, upload_files_for_event, add_custom_fields_to_event, add_dates_and_times_to_event, send_email, register_for_event, get_events, get_event_info, get_event, collect_filters, send_message_to_email, update_custom_fields_for_event, update_dates_and_times_for_event
 from auth.utils import oauth_scheme
@@ -82,7 +82,7 @@ async def update_event(
 ):
     user = await get_user_profile_by_email(token, db)
 
-    event = await db.get(Event, event_id, options=[joinedload(Event.event_dates_times), joinedload(Event.creator)])
+    event = await db.get(Event, event_id, options=[joinedload(Event.event_dates_times), joinedload(Event.custom_fields), joinedload(Event.creator)])
     if not event:
         return {"msg": "Event not found"}
     
@@ -142,6 +142,32 @@ async def update_event(
         "event_link": f"http://localhost:3001/events/{event_id}"
     }
 
+
+@router.get("/get-filled-custom-fields/{event_id}/", response_model=FilledCustomFieldsResponseSchema)
+async def get_filled_custom_fields(
+    event_id: int,
+    token: str = Depends(oauth_scheme),
+    db: AsyncSession = Depends(get_async_session)):
+    user = await get_user_profile_by_email(token, db)
+    stmt = select(Event).where(Event.id == event_id).options(selectinload(Event.custom_fields)
+                                                             .selectinload(CustomField.custom_values))
+    result = await db.execute(stmt)
+    event = result.scalar_one_or_none()
+
+    if not event:
+        raise HTTPException(detail="Event doesn't exist", status_code=404)
+    
+    if event.creator_id != user.id:
+        raise HTTPException(detail="User isn't a event creator", status_code=403)
+    
+    filled_custom_fields = [
+        custom_field.id 
+        for custom_field in event.custom_fields 
+        if custom_field.custom_values
+    ]
+
+    return {"filled_custom_fields": filled_custom_fields}
+    
 
 @router.delete("/cancel/{event_id}/")
 async def cancel_event(
