@@ -1,6 +1,6 @@
 from fastapi import UploadFile, Body, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, func
 from auth.models import User
 from events.models import Event, EventFile, CustomField, Booking, CustomValue, EventDateTime, StatusEnum
 from events.schemas import EventCreateSchema, EmailSchema, EventRegistrationSchema, FilterSchema, UpdateCustomFieldSchema, UpdateEventDateTimeSchema, EventDateTimeSchema
@@ -121,11 +121,21 @@ async def update_dates_and_times_for_event(event: Event, event_dates_times: List
             existing_date_time = existing_date_time.scalar_one_or_none()
 
             if existing_date_time:
+                bookings_count_stmt = (
+                    select(func.count(Booking.id))
+                    .filter(Booking.event_date_time_id == existing_date_time.id)
+                )
+                bookings_count_result = await db.execute(bookings_count_stmt)
+                bookings_count = bookings_count_result.scalar() or 0
                 existing_date_time.start_date = date_time_data.start_date or existing_date_time.start_date
                 existing_date_time.end_date = date_time_data.end_date or existing_date_time.end_date
                 existing_date_time.start_time = date_time_data.start_time or existing_date_time.start_time
                 existing_date_time.end_time = date_time_data.end_time or existing_date_time.end_time
-                existing_date_time.seats_number = date_time_data.seats_number or existing_date_time.seats_number
+                existing_date_time.seats_number = (
+                    date_time_data.seats_number - bookings_count
+                    if date_time_data.seats_number is not None
+                    else existing_date_time.seats_number
+                )
             else:
                 return {"msg": f"Datetime slot with id {date_time_data.id} doesn't exist"}
         else:

@@ -128,7 +128,8 @@ async def update_event(
 
     return {
         "msg": "Event updated successfully",
-        "event_id": event.id
+        "event_id": event.id,
+        "event_link": f"http://localhost:3001/events/{event_id}"
     }
 
 
