@@ -9,6 +9,7 @@ from events.router import router as events_router
 from teams.router import router as teams_router
 from database import async_session_maker
 from fastapi.openapi.utils import get_openapi
+import uvicorn
 
 
 app = FastAPI()
@@ -59,7 +60,7 @@ app.add_middleware(
                    "Authorization", "Content-Length"],
 )
 
-app.mount("/media", StaticFiles(directory="media"), name="media")
+# app.mount("/media", StaticFiles(directory="media"), name="media")
 
 
 @app.on_event("startup")
@@ -68,3 +69,7 @@ async def on_startup():
         await clean_revoked_tokens(db)
     
     await schedule_jobs()
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
