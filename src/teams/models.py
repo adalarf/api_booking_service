@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Integer, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
-from database import Base
+from src.database import Base
 
 
 class Team(Base):

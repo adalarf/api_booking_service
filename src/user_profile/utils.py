@@ -1,6 +1,6 @@
 from fastapi import HTTPException
-from auth.models import User
-from auth.utils import get_email_from_token
+from src.auth.models import User
+from src.auth.utils import get_email_from_token
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 

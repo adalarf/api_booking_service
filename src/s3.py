@@ -3,7 +3,7 @@ from botocore.exceptions import ClientError
 from contextlib import asynccontextmanager
 from fastapi import UploadFile
 from botocore.config import Config
-from config import ACCESS_KEY, SECRET_KEY, BUCKET_NAME
+from src.config import ACCESS_KEY, SECRET_KEY, BUCKET_NAME
 
 
 class S3Client:

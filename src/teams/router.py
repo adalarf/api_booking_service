@@ -1,15 +1,15 @@
 from fastapi import APIRouter, Depends, UploadFile, Body, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from teams.models import Team, UserTeam
-from teams.schemas import CreateTeamSchema, InvitedUserSchema, TeamsInfoSchema, RemoveUserSchema, TeamMembersResponseSchema
-from auth.models import User
-from auth.utils import oauth_scheme
-from events.utils import upload_photo, create_registration_link, decrypt_registration_link
-from teams.utils import get_team, send_invite_to_team_email
-from user_profile.utils import get_user_profile_by_email
-from database import get_async_session
-from s3 import S3Client, get_s3_client
+from src.teams.models import Team, UserTeam
+from src.teams.schemas import CreateTeamSchema, InvitedUserSchema, TeamsInfoSchema, RemoveUserSchema, TeamMembersResponseSchema
+from src.auth.models import User
+from src.auth.utils import oauth_scheme
+from src.events.utils import upload_photo, create_registration_link, decrypt_registration_link
+from src.teams.utils import get_team, send_invite_to_team_email
+from src.user_profile.utils import get_user_profile_by_email
+from src.database import get_async_session
+from src.s3 import S3Client, get_s3_client
 from typing import Optional, List
 
 

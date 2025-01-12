@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from auth.models import User
-from auth.utils import oauth_scheme
-from events.utils import upload_photo, get_event_photo_url
-from user_profile.schemas import UserProfileSchema, UserProfileUpdateSchema
-from user_profile.utils import get_user_profile_by_email
-from s3 import S3Client, get_s3_client
-from database import get_async_session
+from src.auth.models import User
+from src.auth.utils import oauth_scheme
+from src.events.utils import upload_photo, get_event_photo_url
+from src.user_profile.schemas import UserProfileSchema, UserProfileUpdateSchema
+from src.user_profile.utils import get_user_profile_by_email
+from src.s3 import S3Client, get_s3_client
+from src.database import get_async_session
 from typing import Optional
 
 

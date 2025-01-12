@@ -2,7 +2,7 @@ from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.pool import NullPool
-from config import DATABASE_URL_ASYNC
+from src.config import DATABASE_URL_ASYNC
 
 
 Base = declarative_base()

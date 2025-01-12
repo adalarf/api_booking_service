@@ -1,13 +1,13 @@
 from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-from database import get_async_session
-from teams.models import Team
-from teams.schemas import InvitedUserSchema
-from events.utils import decrypt_registration_link
+from src.database import get_async_session
+from src.teams.models import Team
+from src.teams.schemas import InvitedUserSchema
+from src.events.utils import decrypt_registration_link
 from sqlalchemy.ext.asyncio import AsyncSession
 from email.message import EmailMessage
-from config import REGISTATION_LINK_CIPHER_KEY, EMAIL_SENDER, EMAIL_PASSWORD, EMAIL_HOST, EMAIL_PORT
+from src.config import REGISTATION_LINK_CIPHER_KEY, EMAIL_SENDER, EMAIL_PASSWORD, EMAIL_HOST, EMAIL_PORT
 import aiosmtplib
 
 

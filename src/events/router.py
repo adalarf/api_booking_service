@@ -2,17 +2,17 @@ from fastapi import APIRouter, Depends, UploadFile, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, distinct, and_, delete, func
 from sqlalchemy.orm import joinedload
-from events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema, EventInfoSchema, EventSchema, FilterSchema, MessageSchema, ChangeOnlineLinkSchema, EventUpdateSchema, TeamInvitationSchema, EventDateTimeMembersSchema, FilledCustomFieldsResponseSchema
-from events.models import Event, Booking, EventDateTime, EventInvite, StatusEnum, CustomValue, CustomField
-from events.utils import upload_photo, upload_files_for_event, add_custom_fields_to_event, add_dates_and_times_to_event, send_email, register_for_event, get_events, get_event_info, get_event, collect_filters, send_message_to_email, update_custom_fields_for_event, update_dates_and_times_for_event
-from auth.utils import oauth_scheme
-from auth.models import User
-from user_profile.utils import get_user_profile_by_email
-from teams.models import Team, UserTeam
-from database import get_async_session
+from src.events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema, EventInfoSchema, EventSchema, FilterSchema, MessageSchema, ChangeOnlineLinkSchema, EventUpdateSchema, TeamInvitationSchema, EventDateTimeMembersSchema, FilledCustomFieldsResponseSchema
+from src.events.models import Event, Booking, EventDateTime, EventInvite, StatusEnum, CustomValue, CustomField
+from src.events.utils import upload_photo, upload_files_for_event, add_custom_fields_to_event, add_dates_and_times_to_event, send_email, register_for_event, get_events, get_event_info, get_event, collect_filters, send_message_to_email, update_custom_fields_for_event, update_dates_and_times_for_event
+from src.auth.utils import oauth_scheme
+from src.auth.models import User
+from src.user_profile.utils import get_user_profile_by_email
+from src.teams.models import Team, UserTeam
+from src.database import get_async_session
 from typing import List, Optional
 from sqlalchemy.orm import selectinload
-from s3 import S3Client, get_s3_client
+from src.s3 import S3Client, get_s3_client
 
 
 router = APIRouter(
@@ -65,7 +65,7 @@ async def create_event(
     return {
         "msg": "Event created",
         "event_id": new_event.id,
-        "event_link": f"http://localhost:3001/events/{new_event.id}"
+        "event_link": f"https://inplace.website.yandexcloud.net/events/{new_event.id}"
     }
 
 
@@ -139,7 +139,7 @@ async def update_event(
     return {
         "msg": "Event updated successfully",
         "event_id": event.id,
-        "event_link": f"http://localhost:3001/events/{event_id}"
+        "event_link": f"https://inplace.website.yandexcloud.net/events/{event_id}"
     }
 
 

@@ -2,12 +2,12 @@ from passlib.context import CryptContext
 from datetime import datetime, timedelta
 import jwt
 from sqlalchemy.ext.asyncio import AsyncSession
-from auth.models import RevokedToken
+from src.auth.models import RevokedToken
 from sqlalchemy import delete, select, insert
 from sqlalchemy.exc import NoResultFound
 from fastapi.security import OAuth2PasswordBearer
 from fastapi import HTTPException
-from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+from src.config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 
 
 oauth_scheme = OAuth2PasswordBearer(tokenUrl="login/")

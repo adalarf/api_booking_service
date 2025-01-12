@@ -1,16 +1,16 @@
 from fastapi import UploadFile, Body, HTTPException, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, func
-from auth.models import User
-from events.models import Event, EventFile, CustomField, Booking, CustomValue, EventDateTime, StatusEnum
-from events.schemas import EventCreateSchema, EmailSchema, EventRegistrationSchema, FilterSchema, UpdateCustomFieldSchema, UpdateEventDateTimeSchema, EventDateTimeSchema
+from src.auth.models import User
+from src.events.models import Event, EventFile, CustomField, Booking, CustomValue, EventDateTime, StatusEnum
+from src.events.schemas import EventCreateSchema, EmailSchema, EventRegistrationSchema, FilterSchema, UpdateCustomFieldSchema, UpdateEventDateTimeSchema, EventDateTimeSchema
 from cryptography.fernet import Fernet
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from typing import List, Optional
-from database import async_session_maker
+from src.database import async_session_maker
 from email.message import EmailMessage
-from config import REGISTATION_LINK_CIPHER_KEY, EMAIL_SENDER, EMAIL_PASSWORD, EMAIL_HOST, EMAIL_PORT
-from s3 import S3Client
+from src.config import REGISTATION_LINK_CIPHER_KEY, EMAIL_SENDER, EMAIL_PASSWORD, EMAIL_HOST, EMAIL_PORT
+from src.s3 import S3Client
 from datetime import datetime, timedelta
 import secrets
 import base64

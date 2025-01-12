@@ -2,12 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime, timedelta
-from auth.schemas import UserRegisterSchema, UserLoginSchema, ChangePasswordSchema
-from auth.utils import verify_password, get_password_hash, create_access_token, is_token_revoked, revoke_token, oauth_scheme
-from auth.models import User
-from user_profile.utils import get_user_profile_by_email
-from database import get_async_session
-from config import ACCESS_TOKEN_EXPIRE_MINUTES, SECRET_KEY, ALGORITHM
+from src.auth.schemas import UserRegisterSchema, UserLoginSchema, ChangePasswordSchema
+from src.auth.utils import verify_password, get_password_hash, create_access_token, is_token_revoked, revoke_token, oauth_scheme
+from src.auth.models import User
+from src.user_profile.utils import get_user_profile_by_email
+from src.database import get_async_session
+from src.config import ACCESS_TOKEN_EXPIRE_MINUTES, SECRET_KEY, ALGORITHM
 import jwt
 
 
