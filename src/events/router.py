@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, UploadFile, HTTPException, Body
+from fastapi import APIRouter, Depends, UploadFile, HTTPException, Body, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, distinct, and_, delete, func
 from sqlalchemy.orm import joinedload
@@ -380,32 +380,25 @@ async def view_all_events(format: str,
 
 @router.get("/{event_id}/view/", response_model=EventSchema)
 async def view_events(event_id: int,
-                          s3_client: S3Client = Depends(get_s3_client),
-                          db: AsyncSession = Depends(get_async_session)):
-    stmt = select(Event).where(Event.id == event_id).options(selectinload(Event.event_dates_times).selectinload(EventDateTime.date_time_bookings),
-                                                             selectinload(Event.creator))
-    result = await db.execute(stmt)
-    event = result.scalar_one_or_none()
-    if event.status == StatusEnum.close:
-        raise HTTPException(detail="Event is closed", status_code=403)
-
-    event_info = get_event(event, s3_client)
+                      request: Request,
+                      s3_client: S3Client = Depends(get_s3_client),
+                      db: AsyncSession = Depends(get_async_session)):
     
-    return event_info
-
-
-@router.get("/{event_id}/view-closed/", response_model=EventSchema)
-async def view_closed_events(event_id: int,
-                          token: str = Depends(oauth_scheme),
-                          s3_client: S3Client = Depends(get_s3_client),
-                          db: AsyncSession = Depends(get_async_session)):
-    user = await get_user_profile_by_email(token, db)
+    authorization_header = request.headers.get("Authorization")
+    token = None
+    if authorization_header and authorization_header.startswith("Bearer "):
+        token = authorization_header.split("Bearer ")[1]
+    
     stmt = select(Event).where(Event.id == event_id).options(selectinload(Event.event_dates_times).selectinload(EventDateTime.date_time_bookings),
-                                                             selectinload(Event.creator),
-                                                             selectinload(Event.invites))
+                                                             selectinload(Event.creator), selectinload(Event.invites))
     result = await db.execute(stmt)
     event = result.scalar_one_or_none()
     if event.status == StatusEnum.close:
+        if not token:
+            raise HTTPException(detail="Event is closed", status_code=403)
+        
+        user = await get_user_profile_by_email(token, db)
+
         registered_stmt = (
             select(Booking).where(and_(
                     Booking.user_id == user.id,
@@ -425,8 +418,11 @@ async def view_closed_events(event_id: int,
 
         if not is_registered and not has_invite:
             raise HTTPException(detail="You do not have access to this event")
-
-    event_info = get_event(event, s3_client)
+        
+        event_info = get_event(event, s3_client)
+        
+    else:
+        event_info = get_event(event, s3_client)
     
     return event_info
 
