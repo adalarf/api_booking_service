@@ -416,9 +416,9 @@ async def view_events(event_id: int,
         invite_result = await db.execute(invite_stmt)
         has_invite = invite_result.scalar_one_or_none()
 
-        if not is_registered and not has_invite:
-            raise HTTPException(detail="You do not have access to this event")
-        
+        if not is_registered and not has_invite and event.creator_id != user.id:
+            raise HTTPException(detail="You don't have access to the event", status_code=400)
+
         event_info = get_event(event, s3_client)
         
     else:
