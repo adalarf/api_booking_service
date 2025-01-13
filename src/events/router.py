@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, UploadFile, HTTPException, Body, Request
+from fastapi import APIRouter, Depends, UploadFile, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, distinct, and_, delete, func
 from sqlalchemy.orm import joinedload
@@ -380,49 +380,13 @@ async def view_all_events(format: str,
 
 @router.get("/{event_id}/view/", response_model=EventSchema)
 async def view_events(event_id: int,
-                      request: Request,
                       s3_client: S3Client = Depends(get_s3_client),
                       db: AsyncSession = Depends(get_async_session)):
-    
-    authorization_header = request.headers.get("Authorization")
-    token = None
-    if authorization_header and authorization_header.startswith("Bearer "):
-        token = authorization_header.split("Bearer ")[1]
-    
     stmt = select(Event).where(Event.id == event_id).options(selectinload(Event.event_dates_times).selectinload(EventDateTime.date_time_bookings),
                                                              selectinload(Event.creator), selectinload(Event.invites))
     result = await db.execute(stmt)
     event = result.scalar_one_or_none()
-    if event.status == StatusEnum.close:
-        if not token:
-            raise HTTPException(detail="Event is closed", status_code=403)
-        
-        user = await get_user_profile_by_email(token, db)
-
-        registered_stmt = (
-            select(Booking).where(and_(
-                    Booking.user_id == user.id,
-                    Booking.event_date_time_id.in_([dt.id for dt in event.event_dates_times]))
-                    ))
-        registration_result = await db.execute(registered_stmt)
-        is_registered = registration_result.scalar_one_or_none()
-
-        invite_stmt = (
-            select(EventInvite)
-            .where(and_(
-                    EventInvite.event_id == event.id,
-                    EventInvite.email == user.email))
-        )
-        invite_result = await db.execute(invite_stmt)
-        has_invite = invite_result.scalar_one_or_none()
-
-        if not is_registered and not has_invite and event.creator_id != user.id:
-            raise HTTPException(detail="You don't have access to the event", status_code=400)
-
-        event_info = get_event(event, s3_client)
-        
-    else:
-        event_info = get_event(event, s3_client)
+    event_info = get_event(event, s3_client)
     
     return event_info
 
