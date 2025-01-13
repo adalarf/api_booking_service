@@ -69,3 +69,7 @@ async def on_startup():
         await clean_revoked_tokens(db)
     
     await schedule_jobs()
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -65,7 +65,7 @@ async def create_event(
     return {
         "msg": "Event created",
         "event_id": new_event.id,
-        "event_link": f"http://neuroquest.ru.website.yandexcloud.net/events/{new_event.id}"
+        "event_link": f"https://booking-service-ochre.vercel.app/events/{new_event.id}"
     }
 
 
@@ -139,7 +139,7 @@ async def update_event(
     return {
         "msg": "Event updated successfully",
         "event_id": event.id,
-        "event_link": f"http://neuroquest.ru.website.yandexcloud.net/events/{event_id}"
+        "event_link": f"https://booking-service-ochre.vercel.app/events/{event_id}"
     }
 
 
