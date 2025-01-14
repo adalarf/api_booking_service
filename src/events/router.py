@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, UploadFile, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, distinct, and_, delete, func
+from sqlalchemy import select, distinct, and_, delete, func, or_
 from sqlalchemy.orm import joinedload
 from src.events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema, EventInfoSchema, EventSchema, FilterSchema, MessageSchema, ChangeOnlineLinkSchema, EventUpdateSchema, TeamInvitationSchema, EventDateTimeMembersSchema, FilledCustomFieldsResponseSchema
 from src.events.models import Event, Booking, EventDateTime, EventInvite, StatusEnum, CustomValue, CustomField
@@ -11,6 +11,7 @@ from src.user_profile.utils import get_user_profile_by_email
 from src.teams.models import Team, UserTeam
 from src.database import get_async_session
 from typing import List, Optional
+from uuid import uuid4
 from sqlalchemy.orm import selectinload
 from src.s3 import S3Client, get_s3_client
 
@@ -40,6 +41,10 @@ async def create_event(
 
     online_link = str(event.online_link) if event.online_link else None
 
+    unique_key = None
+    if event.status == StatusEnum.close:
+        unique_key = str(uuid4())
+
     new_event = Event(
         name=event.name,
         description=event.description,
@@ -49,6 +54,7 @@ async def create_event(
         status=event.status,
         format=event.format,
         online_link=online_link,
+        unique_key=unique_key,
         photo=photo_path,
         schedule=schedule_path,
         creator_id=user.id
@@ -65,7 +71,7 @@ async def create_event(
     return {
         "msg": "Event created",
         "event_id": new_event.id,
-        "event_link": f"https://booking-service-ochre.vercel.app/events/{new_event.id}"
+        "event_link": f"https://booking-service-ochre.vercel.app/events/{unique_key if unique_key else new_event.id}"
     }
 
 
@@ -106,6 +112,9 @@ async def update_event(
         if field not in {"custom_fields", "event_dates_times"}:
             if value is not None:
                 setattr(event, field, value)
+    
+    if updated_event.status == StatusEnum.close and not event.unique_key:
+        event.unique_key = str(uuid4())
 
     incoming_dates_ids = {dt.id for dt in (updated_event.event_dates_times or []) if dt.id}
     for event_date_time in event.event_dates_times:
@@ -139,7 +148,7 @@ async def update_event(
     return {
         "msg": "Event updated successfully",
         "event_id": event.id,
-        "event_link": f"https://booking-service-ochre.vercel.app/events/{event_id}"
+        "event_link": f"https://booking-service-ochre.vercel.app/events/{event.unique_key if event.status == StatusEnum.close else event.id}"
     }
 
 
@@ -378,33 +387,50 @@ async def view_all_events(format: str,
     return event_list
 
 
-@router.get("/{event_id}/view/", response_model=EventSchema)
-async def view_events(event_id: int,
+@router.get("/{identifier}/view/", response_model=EventSchema)
+async def view_events(identifier: int | str,
                       s3_client: S3Client = Depends(get_s3_client),
                       db: AsyncSession = Depends(get_async_session)):
-    stmt = select(Event).where(Event.id == event_id).options(selectinload(Event.event_dates_times).selectinload(EventDateTime.date_time_bookings),
+    if identifier.isdigit():
+        stmt = select(Event).where(Event.id == int(identifier)).options(selectinload(Event.event_dates_times).selectinload(EventDateTime.date_time_bookings),
+                                                             selectinload(Event.creator), selectinload(Event.invites))
+        result = await db.execute(stmt)
+        event = result.scalar_one_or_none()
+    else:
+        stmt = select(Event).where(Event.unique_key == identifier).options(selectinload(Event.event_dates_times).selectinload(EventDateTime.date_time_bookings),
                                                              selectinload(Event.creator), selectinload(Event.invites))
     result = await db.execute(stmt)
     event = result.scalar_one_or_none()
+    
     event_info = get_event(event, s3_client)
     
     return event_info
 
 
-@router.get("/register/{event_id}/")
+@router.get("/register/{identifier}/")
 async def get_register_by_event_id_info(
-    event_id: int,
+    identifier: int | str,
     token: str = Depends(oauth_scheme),
     db: AsyncSession = Depends(get_async_session)
 ):
     user = await get_user_profile_by_email(token, db)
-    stmt = select(Event).where(Event.id == event_id).options(
-        selectinload(Event.custom_fields)
-    )
+    if identifier.isdigit():
+        stmt = select(Event).where(Event.id == int(identifier)).options(
+            selectinload(Event.custom_fields)
+        )
+        event_result = await db.execute(stmt)
+        existing_event = event_result.scalar_one_or_none()
+
+        if existing_event.status == StatusEnum.close:
+            raise HTTPException(detail="Access to registration on this event provides through special link", status_code=400)
+    else:
+        stmt = select(Event).where(Event.unique_key == identifier).options(
+            selectinload(Event.custom_fields)
+        )
     event_result = await db.execute(stmt)
     existing_event = event_result.scalar_one_or_none()
     if existing_event is None:
-        return {"msg": "Event not found or invalid link"}
+        raise HTTPException(status_code=404, detail="Event not found")
     
     dates_times_stmt = (
         select(EventDateTime)
@@ -438,37 +464,36 @@ async def get_register_by_event_id_info(
     return {"dates": dates_info}
 
 
-@router.post("/register/{event_id}/")
+@router.post("/register/{identifier}/")
 async def register_for_event_by_id(
-    event_id: int,
+    identifier: int | str,
     registration_fields: EventRegistrationSchema,
     token: str = Depends(oauth_scheme),
     db: AsyncSession = Depends(get_async_session)
 ):
     user = await get_user_profile_by_email(token, db)
-    
-    stmt = select(Event).where(Event.id == event_id).options(
-        selectinload(Event.event_dates_times),
-        selectinload(Event.custom_fields)
-    )
-    event_result = await db.execute(stmt)
-    event = event_result.scalar_one_or_none()
-    
+
+    if identifier.isdigit():
+        stmt = select(Event).where(Event.id == int(identifier)).options(
+            selectinload(Event.event_dates_times),
+            selectinload(Event.custom_fields)
+        )
+        event_result = await db.execute(stmt)
+        event = event_result.scalar_one_or_none()
+
+        if event.status == StatusEnum.close:
+            raise HTTPException(detail="Access to registration on this event provides through special link", status_code=400)
+    else:
+        stmt = select(Event).where( Event.unique_key == identifier).options(
+            selectinload(Event.event_dates_times),
+            selectinload(Event.custom_fields)
+        )
+        event_result = await db.execute(stmt)
+        event = event_result.scalar_one_or_none()
     if event is None:
         raise HTTPException(status_code=404, detail="Event not found")
     
-    if event.status == "close":
-        invite = await db.execute(
-            select(EventInvite).where(EventInvite.email == user.email, EventInvite.event_id == event_id)
-        )
-        if not invite.scalar_one_or_none():
-            return "Registration by link is required for this event."
-    
     response = await register_for_event(event, registration_fields, user.id, db, registration_fields.expiration_days)
-
-    await db.execute(
-        delete(EventInvite).where(EventInvite.email == user.email, EventInvite.event_id == event_id)
-    )
     await db.commit()
 
     return response

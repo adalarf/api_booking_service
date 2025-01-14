@@ -12,11 +12,11 @@ import os
 sys.path.append(os.path.join(sys.path[0], 'src'))
 
 
-from auth.models import *
-from events.models import *
-from teams.models import *
-from config import DATABASE_URL_ASYNC_ALEMBIC
-from database import Base
+from src.auth.models import *
+from src.events.models import *
+from src.teams.models import *
+from src.config import DATABASE_URL_ASYNC_ALEMBIC
+from src.database import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

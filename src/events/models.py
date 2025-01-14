@@ -51,6 +51,7 @@ class Event(Base):
     photo = Column(String, nullable=True)
     schedule = Column(String, nullable=True)
     online_link = Column(String, nullable=True)
+    unique_key = Column(String, unique=True, nullable=True)
     creator_id = Column(Integer, ForeignKey("user.id"), nullable=True)
 
     custom_fields = relationship("CustomField", back_populates="event_custom_field", cascade="all, delete")
