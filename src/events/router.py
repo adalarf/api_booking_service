@@ -280,10 +280,16 @@ async def invite_users(users_invited_to_event: EventInviteSchema, token: str = D
     if existing_event:
         creator = existing_event.creator
         if creator == user:
-            for invited_user in users_invited_to_event.users_emails:
-                invite = EventInvite(email=invited_user.email, event_id=event_id)
-                db.add(invite)
-                await send_email(existing_event.id, existing_event.name, invited_user)
+            if existing_event.status == StatusEnum.close:
+                for invited_user in users_invited_to_event.users_emails:
+                    invite = EventInvite(email=invited_user.email, event_id=event_id)
+                    db.add(invite)
+                    await send_email(existing_event.unique_key, existing_event.name, invited_user)
+            else:
+                for invited_user in users_invited_to_event.users_emails:
+                    invite = EventInvite(email=invited_user.email, event_id=event_id)
+                    db.add(invite)
+                    await send_email(existing_event.id, existing_event.name, invited_user)
             
             await db.commit()
 

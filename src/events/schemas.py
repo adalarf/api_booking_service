@@ -203,6 +203,7 @@ class EventSchema(BaseModel):
     status: StatusEnum
     format: FormatEnum
     online_link: Optional[AnyHttpUrl] = None
+    unique_key: Optional[str] = None
     state: str
     photo_url: Optional[AnyHttpUrl]
     schedule_url: Optional[AnyHttpUrl]

@@ -315,6 +315,7 @@ def get_event(event: Event, s3_client: S3Client):
             "status": event.status,
             "format": event.format.value,
             "online_link": event.online_link,
+            "unique_key": event.unique_key,
             "state": event.state,
             "photo_url": photo_url,
             "schedule_url": schedule_url,
