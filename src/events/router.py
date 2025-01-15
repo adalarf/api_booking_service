@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, UploadFile, HTTPException, Body
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, distinct, and_, delete, func, or_
+from sqlalchemy import select, distinct, and_, func, exists
 from sqlalchemy.orm import joinedload
+from sqlalchemy.types import TIMESTAMP
 from src.events.schemas import EventCreateSchema, EventCreateResponseSchema, EventInviteSchema, EventRegistrationSchema, EventInfoSchema, EventSchema, FilterSchema, MessageSchema, ChangeOnlineLinkSchema, EventUpdateSchema, TeamInvitationSchema, EventDateTimeMembersSchema, FilledCustomFieldsResponseSchema
 from src.events.models import Event, Booking, EventDateTime, EventInvite, StatusEnum, CustomValue, CustomField
 from src.events.utils import upload_photo, upload_files_for_event, add_custom_fields_to_event, add_dates_and_times_to_event, send_email, register_for_event, get_events, get_event_info, get_event, collect_filters, send_message_to_email, update_custom_fields_for_event, update_dates_and_times_for_event
@@ -14,6 +15,7 @@ from typing import List, Optional
 from uuid import uuid4
 from sqlalchemy.orm import selectinload
 from src.s3 import S3Client, get_s3_client
+from datetime import datetime
 
 
 router = APIRouter(
@@ -701,11 +703,26 @@ async def send_message_to_event_participants(
 
 @router.get("/cities/")
 async def get_cities(db: AsyncSession = Depends(get_async_session)):
-    stmt = select(distinct(Event.city)).where(Event.city != None)
+    stmt = (
+        select(distinct(Event.city))
+        .where(
+            Event.city != None,
+            Event.city != "",
+            Event.status != StatusEnum.close,
+            ~exists().where(
+                and_(
+                    EventDateTime.event_id == Event.id,
+                    func.concat(
+                        EventDateTime.end_date, ' ', EventDateTime.end_time
+                    ).cast(TIMESTAMP) < datetime.now()
+                )
+            )
+        )
+    )
     result = await db.execute(stmt)
     cities = result.scalars().all()
 
-    return {"cities": cities}
+    return {"cities": list(cities)}
 
 
 @router.post("/filter/", response_model=List[EventInfoSchema])

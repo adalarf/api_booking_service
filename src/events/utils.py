@@ -153,7 +153,7 @@ async def update_dates_and_times_for_event(event: Event, event_dates_times: List
 
 
 async def send_email(event_id: str, event_name: str, receiver: EmailSchema):
-    event_link = f"http://localhost:3001/events/{event_id}"
+    event_link = f"https://booking-service-ochre.vercel.app/events/{event_id}"
     sender = EMAIL_SENDER
     email_host = EMAIL_HOST
     email_port = EMAIL_PORT
